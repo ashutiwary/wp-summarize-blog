@@ -141,3 +141,20 @@ function cfs_enqueue_assets(): void {
 	);
 }
 add_action( 'wp_enqueue_scripts', 'cfs_enqueue_assets' );
+
+/**
+ * Add a "Settings" link on the Plugins list page.
+ *
+ * @param array $links Existing action links.
+ * @return array Modified action links.
+ */
+function cfs_plugin_action_links( array $links ): array {
+	$settings_link = sprintf(
+		'<a href="%s">%s</a>',
+		esc_url( admin_url( 'options-general.php?page=cf-summarize-settings' ) ),
+		esc_html__( 'Settings', 'cf-summarize' )
+	);
+	array_unshift( $links, $settings_link );
+	return $links;
+}
+add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), 'cfs_plugin_action_links' );
