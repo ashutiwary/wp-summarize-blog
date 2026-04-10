@@ -32,6 +32,7 @@
 .cfs-btn:focus-visible {
 	background: #0129ac;
 	border: 1px solid #ffffff;
+	color: #ffffff;
 }
 
 .cfs-btn:focus-visible {
