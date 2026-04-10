@@ -1,0 +1,160 @@
+<?php
+/**
+ * REST API endpoint for CF-Summarize.
+ *
+ * @package CF_Summarize
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * Class CFS_Rest_API
+ *
+ * Registers and handles the /cf-sum/v1/summarize POST endpoint.
+ */
+class CFS_Rest_API {
+
+	/**
+	 * Constructor — hook into REST API init.
+	 */
+	public function __construct() {
+		add_action( 'rest_api_init', [ $this, 'register_routes' ] );
+	}
+
+	/**
+	 * Register the summarize route.
+	 */
+	public function register_routes(): void {
+		register_rest_route(
+			'cf-sum/v1',
+			'/summarize',
+			[
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => [ $this, 'handle_request' ],
+				'permission_callback' => '__return_true',
+				'args'                => [
+					'post_id' => [
+						'required'          => true,
+						'type'              => 'integer',
+						'sanitize_callback' => 'absint',
+					],
+					'nonce'   => [
+						'required' => true,
+						'type'     => 'string',
+					],
+				],
+			]
+		);
+	}
+
+	/**
+	 * Handle the summarize POST request.
+	 *
+	 * @param WP_REST_Request $request Full REST request object.
+	 * @return WP_REST_Response|WP_Error JSON response or error.
+	 */
+	public function handle_request( WP_REST_Request $request ) {
+		// 1. Verify nonce.
+		$nonce = sanitize_text_field( $request->get_param( 'nonce' ) );
+		if ( ! wp_verify_nonce( $nonce, 'cfs_summarize_nonce' ) ) {
+			return new WP_Error(
+				'invalid_nonce',
+				__( 'Security check failed.', 'cf-summarize' ),
+				[ 'status' => 403 ]
+			);
+		}
+
+		// 2. Rate limit: max 10 requests per 60 seconds per IP.
+		$ip          = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : 'unknown';
+		$rate_key    = 'cfs_rate_' . md5( $ip );
+		$rate_data   = get_transient( $rate_key );
+
+		if ( false === $rate_data ) {
+			set_transient( $rate_key, 1, 60 );
+		} else {
+			$count = (int) $rate_data;
+			if ( $count >= 10 ) {
+				return new WP_Error(
+					'rate_limit',
+					__( 'Too many requests. Please wait a moment before trying again.', 'cf-summarize' ),
+					[ 'status' => 429 ]
+				);
+			}
+			set_transient( $rate_key, $count + 1, 60 );
+		}
+
+		// 3. Validate post.
+		$post_id = $request->get_param( 'post_id' );
+		$post    = get_post( $post_id );
+
+		if ( ! $post || 'publish' !== $post->post_status ) {
+			return new WP_Error(
+				'post_not_found',
+				__( 'Post not found or not published.', 'cf-summarize' ),
+				[ 'status' => 404 ]
+			);
+		}
+
+		// 4. Check cache (only if caching is enabled in settings).
+		$cache_enabled = (bool) get_option( 'cfs_cache_enabled', false );
+		$cache_key     = 'cfs_sumv2_' . $post_id;
+
+		if ( $cache_enabled ) {
+			$cached = get_transient( $cache_key );
+
+			if ( false !== $cached && is_array( $cached ) ) {
+				return new WP_REST_Response(
+					[
+						'key_points' => $cached['key_points'],
+						'conclusion' => $cached['conclusion'],
+						'cached'     => true,
+					],
+					200
+				);
+			}
+		}
+
+		// 5. Extract content.
+		try {
+			$content = CFS_Content_Extractor::extract( $post );
+		} catch ( Exception $e ) {
+			return new WP_Error(
+				'extraction_error',
+				$e->getMessage(),
+				[ 'status' => 422 ]
+			);
+		}
+
+		// 6. Call AI.
+		try {
+			$ai_client = new CFS_AI_Client();
+			$result    = $ai_client->summarize( $content );
+		} catch ( Exception $e ) {
+			return new WP_Error(
+				'ai_error',
+				$e->getMessage(),
+				[ 'status' => 500 ]
+			);
+		}
+
+		// 7. Cache the result (only if caching is enabled).
+		if ( $cache_enabled ) {
+			$cache_duration = (int) get_option( 'cfs_cache_duration', 86400 );
+			if ( $cache_duration > 0 ) {
+				set_transient( $cache_key, $result, $cache_duration );
+			}
+		}
+
+		// 8. Return response.
+		return new WP_REST_Response(
+			[
+				'key_points' => $result['key_points'],
+				'conclusion' => $result['conclusion'],
+				'cached'     => false,
+			],
+			200
+		);
+	}
+}

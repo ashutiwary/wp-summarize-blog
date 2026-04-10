@@ -1,0 +1,57 @@
+# ── WordPress ──────────────────────────────────────────────────
+wp-config.php
+wp-content/uploads/
+wp-content/cache/
+wp-content/upgrade/
+wp-content/backup-db/
+*.log
+
+# ── Dependencies ───────────────────────────────────────────────
+vendor/
+node_modules/
+
+# ── Build output ───────────────────────────────────────────────
+dist/
+build/
+*.min.js
+*.min.css
+
+# ── Environment & secrets ──────────────────────────────────────
+.env
+.env.*
+*.local
+
+# ── OS files ───────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE / editor ───────────────────────────────────────────────
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# ── Claude Code ────────────────────────────────────────────────
+.claude/
+
+# ── Composer ───────────────────────────────────────────────────
+composer.lock
+
+# ── npm / yarn ─────────────────────────────────────────────────
+package-lock.json
+yarn.lock
+.npm/
+
+# ── Test & coverage ────────────────────────────────────────────
+coverage/
+.phpunit.result.cache
+.phpunit.cache/
+
+# ── Misc ───────────────────────────────────────────────────────
+*.bak
+*.tmp
+*.orig

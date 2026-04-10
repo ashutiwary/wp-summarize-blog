@@ -1,0 +1,239 @@
+/*
+ * CF-Summarize — Frontend styles
+ * Scoped to .cfs-wrap and .cfs-panel. BEM naming, theme-agnostic.
+ */
+
+/* ── Button wrapper ────────────────────────────────────────────────────── */
+.cfs-wrap {
+	margin: 12px 0 20px 0;
+}
+
+/* ── Button ────────────────────────────────────────────────────────────── */
+.cfs-btn {
+	display:         inline-flex;
+	align-items:     center;
+	gap:             6px;
+	padding:         5px 10px;
+	background:      transparent;
+	color:           #0129ac;
+	border:          1px solid #0129ac;
+	border-radius:   6px;
+	font-size:       14px;
+	font-weight:     500;
+	cursor:          pointer;
+	transition:      background 0.2s ease;
+	line-height:     1.4;
+	text-decoration: none;
+	font-family:     inherit;
+}
+
+.cfs-btn:hover,
+.cfs-btn:active,
+.cfs-btn:focus-visible {
+	background: #0129ac;
+	border: 1px solid #ffffff;
+}
+
+.cfs-btn:focus-visible {
+	box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4);
+}
+
+/* Chevron after the label — rotates when panel is open */
+.cfs-btn::after {
+	content:     '\25BE'; /* ▾ down-pointing small triangle */
+	font-size:   12px;
+	line-height: 1;
+	display:     inline-block;
+	transition:  transform 0.35s ease;
+	margin-left: 2px;
+}
+
+.cfs-btn[aria-expanded="true"]::after {
+	transform: rotate(180deg);
+}
+
+/* ── Accordion panel ───────────────────────────────────────────────────── */
+
+/*
+ * Grid trick for smooth height animation without a fixed max-height.
+ * .cfs-panel       → display:grid, grid-template-rows transitions 0fr ↔ 1fr
+ * .cfs-panel-inner → overflow:hidden grid item; NO padding (would break 0fr)
+ * .cfs-panel-card  → all visual styles + padding live here
+ */
+.cfs-panel {
+	display:             grid;
+	grid-template-rows:  0fr;
+	transition:          grid-template-rows 0.35s ease;
+}
+
+.cfs-panel.cfs-open {
+	grid-template-rows: 1fr;
+}
+
+.cfs-panel-inner {
+	overflow: hidden;
+}
+
+/* ── Panel card (Google AI Overview-inspired) ──────────────────────────── */
+.cfs-panel-card {
+	margin-top:    12px;
+	background:    linear-gradient(160deg, #eef2ff 0%, #faf5ff 100%);
+	border:        1px solid #ddd6fe;
+	border-radius: 12px;
+	padding:       20px 24px 24px;
+	position:      relative;
+	overflow:      hidden; /* clips the decorative top stripe */
+}
+
+/* Decorative gradient stripe at the top of the card */
+.cfs-panel-card::before {
+	content:       '';
+	position:      absolute;
+	top:           0;
+	left:          0;
+	right:         0;
+	height:        3px;
+	background:    linear-gradient(90deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+	border-radius: 12px 12px 0 0;
+}
+
+/* ── Panel header ──────────────────────────────────────────────────────── */
+.cfs-panel-header {
+	display:     flex;
+	align-items: center;
+	gap:         8px;
+	margin:      0 0 14px;
+}
+
+.cfs-panel-title {
+	font-size:   15px;
+	font-weight: 600;
+	color:       #1e1b4b;
+	line-height: 1.3;
+}
+
+/* ── Section labels (Key Points / Conclusion) ──────────────────────────── */
+.cfs-section-label {
+	font-size:      11px;
+	font-weight:    600;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color:          #6366f1;
+	margin:         5px 0 6px !important;
+}
+
+.cfs-section-label:first-child {
+	margin-top: 0;
+}
+
+/* ── Key points list ───────────────────────────────────────────────────── */
+.cfs-key-points {
+	margin:     0px !important;
+	padding:    0;
+	list-style: none;
+}
+
+.cfs-key-points li {
+	font-size:   14px;
+	line-height: 1.65;
+	color:       #374151;
+	padding:     5px 0 5px 20px;
+	position:    relative;
+}
+
+.cfs-key-points li::before {
+	content:   '\25B8'; /* ▸ right-pointing small triangle */
+	position:  absolute;
+	left:      0;
+	top:       7px;
+	color:     #6366f1;
+	font-size: 11px;
+}
+
+/* ── Conclusion ────────────────────────────────────────────────────────── */
+.cfs-conclusion {
+	font-size:    14px;
+	line-height:  1.7;
+	color:        #374151;
+	margin:       0;
+	padding:      10px 14px;
+	background:   rgba(99, 102, 241, 0.07);
+	border-left:  3px solid #6366f1;
+	border-radius: 0 6px 6px 0;
+}
+
+/* ── Loading spinner ───────────────────────────────────────────────────── */
+.cfs-spinner {
+	width:            28px;
+	height:           28px;
+	border:           3px solid #e0e7ff;
+	border-top-color: #6366f1;
+	border-radius:    50%;
+	animation:        cfs-spin 0.7s linear infinite;
+	margin:           8px 0;
+}
+
+@keyframes cfs-spin {
+	0%   { transform: rotate(0deg);   }
+	100% { transform: rotate(360deg); }
+}
+
+/* ── Cached badge ──────────────────────────────────────────────────────── */
+.cfs-cached-badge {
+	display:        inline-block;
+	font-size:      11px;
+	background:     #dcfce7;
+	color:          #166534;
+	padding:        2px 8px;
+	border-radius:  20px;
+	margin-left:    8px;
+	vertical-align: middle;
+	font-weight:    500;
+}
+
+/* ── Error message ─────────────────────────────────────────────────────── */
+.cfs-error {
+	color:     #dc2626;
+	font-size: 14px;
+	margin:    0;
+}
+
+/* ── Dark mode ─────────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+	.cfs-panel-card {
+		background:   linear-gradient(160deg, #1e1b4b 0%, #2e1065 100%);
+		border-color: #4338ca;
+	}
+
+	.cfs-panel-title {
+		color: #e0e7ff;
+	}
+
+	.cfs-section-label {
+		color: #818cf8;
+	}
+
+	.cfs-key-points li {
+		color: #c7d2fe;
+	}
+
+	.cfs-key-points li::before {
+		color: #818cf8;
+	}
+
+	.cfs-conclusion {
+		color:            #c7d2fe;
+		background:       rgba(99, 102, 241, 0.14);
+		border-left-color: #818cf8;
+	}
+
+	.cfs-spinner {
+		border-color:     #312e81;
+		border-top-color: #818cf8;
+	}
+
+	.cfs-cached-badge {
+		background: #14532d;
+		color:      #86efac;
+	}
+}
