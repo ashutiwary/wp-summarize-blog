@@ -35,7 +35,7 @@ A lightweight WordPress plugin that adds an AI-powered **Article Overview** butt
 
 1. Download or clone this repository into your `wp-content/plugins/` directory:
    ```bash
-   git clone https://github.com/your-username/CF-Summarize.git
+   git clone https://github.com/ashutiwary/wp-summarize-blog
    ```
 2. Activate the plugin from **Plugins → Installed Plugins** in your WordPress admin.
 3. Go to **Settings → CF-Summarize** and enter your API key.
