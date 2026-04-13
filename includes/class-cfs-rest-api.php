@@ -40,9 +40,14 @@ class CFS_Rest_API {
 						'type'              => 'integer',
 						'sanitize_callback' => 'absint',
 					],
-					'nonce'   => [
+					'nonce'         => [
 						'required' => true,
 						'type'     => 'string',
+					],
+					'force_refresh' => [
+						'required' => false,
+						'type'     => 'boolean',
+						'default'  => false,
 					],
 				],
 			]
@@ -97,14 +102,14 @@ class CFS_Rest_API {
 			);
 		}
 
-		// 4. Check cache (only if caching is enabled in settings).
+		// 4. Check cache (only if caching is enabled and force_refresh is false).
 		$cache_enabled = (bool) get_option( 'cfs_cache_enabled', false );
-		$cache_key     = 'cfs_sumv2_' . $post_id;
+		$force_refresh = (bool) $request->get_param( 'force_refresh' );
 
-		if ( $cache_enabled ) {
-			$cached = get_transient( $cache_key );
+		if ( $cache_enabled && ! $force_refresh ) {
+			$cached = get_post_meta( $post_id, '_cfs_summary', true );
 
-			if ( false !== $cached && is_array( $cached ) ) {
+			if ( is_array( $cached ) && isset( $cached['key_points'], $cached['conclusion'] ) ) {
 				return new WP_REST_Response(
 					[
 						'key_points' => $cached['key_points'],
@@ -141,10 +146,7 @@ class CFS_Rest_API {
 
 		// 7. Cache the result (only if caching is enabled).
 		if ( $cache_enabled ) {
-			$cache_duration = (int) get_option( 'cfs_cache_duration', 86400 );
-			if ( $cache_duration > 0 ) {
-				set_transient( $cache_key, $result, $cache_duration );
-			}
+			update_post_meta( $post_id, '_cfs_summary', $result );
 		}
 
 		// 8. Return response.

@@ -10,33 +10,56 @@
 
 /* ── Button ────────────────────────────────────────────────────────────── */
 .cfs-btn {
-	display:         inline-flex;
-	align-items:     center;
-	gap:             6px;
-	padding:         5px 10px;
-	background:      transparent;
-	color:           #0129ac;
-	border:          1px solid #0129ac;
-	border-radius:   6px;
-	font-size:       14px;
-	font-weight:     500;
-	cursor:          pointer;
-	transition:      background 0.2s ease;
-	line-height:     1.4;
-	text-decoration: none;
-	font-family:     inherit;
+	display:          inline-flex !important;
+	align-items:      center !important;
+	gap:              6px !important;
+	padding:          5px 10px !important;
+	background:       transparent !important;
+	color:            #0129ac !important;
+	border:           1px solid #0129ac !important;
+	border-radius:    6px !important;
+	font-size:        14px !important;
+	font-weight:      500 !important;
+	cursor:           pointer !important;
+	transition:       background 0.2s ease, color 0.2s ease, border-color 0.2s ease !important;
+	line-height:      1.4 !important;
+	text-decoration:  none !important;
+	font-family:      inherit !important;
+	outline:          none !important;
+	box-shadow:       none !important;
+	vertical-align:   baseline !important;
+	white-space:      nowrap !important;
+	-webkit-appearance: none !important;
+	appearance:       none !important;
 }
 
-.cfs-btn:hover,
-.cfs-btn:active,
-.cfs-btn:focus-visible {
-	background: #0129ac;
-	border: 1px solid #ffffff;
-	color: #ffffff;
+.cfs-btn:hover {
+	background:   #0129ac !important;
+	border-color: #0129ac !important;
+	color:        #ffffff !important;
+	outline:      none !important;
+	box-shadow:   none !important;
+}
+
+.cfs-btn:active {
+	background:   #001a82 !important;
+	border-color: #001a82 !important;
+	color:        #ffffff !important;
+	outline:      none !important;
+	box-shadow:   none !important;
+}
+
+.cfs-btn:focus {
+	outline:    none !important;
+	box-shadow: none !important;
 }
 
 .cfs-btn:focus-visible {
-	box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4);
+	background:   #0129ac !important;
+	border-color: #0129ac !important;
+	color:        #ffffff !important;
+	outline:      none !important;
+	box-shadow:   0 0 0 3px rgba(1, 41, 172, 0.35) !important;
 }
 
 /* Chevron after the label — rotates when panel is open */
@@ -237,4 +260,50 @@
 		background: #14532d;
 		color:      #86efac;
 	}
+}
+
+/* -- Panel header layout ---------------------------------------------------- */
+.cfs-panel-header {
+  justify-content: space-between;
+}
+
+/* -- Regenerate button ------------------------------------------------------- */
+.cfs-regen-btn {
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  width:           26px;
+  height:          26px;
+  padding:         0;
+  background:      transparent;
+  border:          1px solid transparent;
+  border-radius:   6px;
+  color:           #6366f1;
+  cursor:          pointer;
+  transition:      color 0.2s, background 0.2s, transform 0.2s;
+  flex-shrink:     0;
+}
+
+.cfs-regen-btn:hover {
+  background: rgba(99, 102, 241, 0.1);
+  color:      #4f46e5;
+}
+
+.cfs-regen-btn:focus-visible {
+  outline:    2px solid #6366f1;
+  outline-offset: 2px;
+}
+
+.cfs-regen-btn:disabled {
+  opacity: 0.4;
+  cursor:  not-allowed;
+}
+
+.cfs-regen-btn--spinning svg {
+  animation: cfs-spin 0.7s linear infinite;
+}
+
+@media (prefers-color-scheme: dark) {
+  .cfs-regen-btn         { color: #818cf8; }
+  .cfs-regen-btn:hover   { background: rgba(129, 140, 248, 0.12); color: #a5b4fc; }
 }

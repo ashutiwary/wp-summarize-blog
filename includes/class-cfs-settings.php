@@ -111,20 +111,6 @@ class CFS_Settings {
 			} );
 		}
 
-		// Show/hide cache duration row based on the cache enabled checkbox.
-		function toggleCacheDuration() {
-			var checkbox    = document.getElementById( 'cfs_cache_enabled' );
-			var durationRow = document.querySelector( '.cfs-field-row[data-cache-row]' );
-			if ( ! checkbox || ! durationRow ) return;
-			durationRow.style.display = checkbox.checked ? 'grid' : 'none';
-		}
-
-		toggleCacheDuration();
-
-		var cacheCheckbox = document.getElementById( 'cfs_cache_enabled' );
-		if ( cacheCheckbox ) {
-			cacheCheckbox.addEventListener( 'change', toggleCacheDuration );
-		}
 
 		// "Remove saved key" buttons — clear the input so an empty value is saved.
 		document.querySelectorAll( '.cfs-remove-key' ).forEach( function ( btn ) {
@@ -247,15 +233,6 @@ JSCODE;
 			'cf-summarize-settings'
 		);
 
-		register_setting( 'cfs_settings_group', 'cfs_max_chars', [ $this, 'sanitize_absint' ] );
-		add_settings_field(
-			'cfs_max_chars',
-			__( 'Max Characters to Send to AI', 'cf-summarize' ),
-			[ $this, 'field_max_chars' ],
-			'cf-summarize-settings',
-			'cfs_section_performance'
-		);
-
 		register_setting( 'cfs_settings_group', 'cfs_cache_enabled', [ $this, 'sanitize_checkbox' ] );
 		add_settings_field(
 			'cfs_cache_enabled',
@@ -265,14 +242,6 @@ JSCODE;
 			'cfs_section_performance'
 		);
 
-		register_setting( 'cfs_settings_group', 'cfs_cache_duration', [ $this, 'sanitize_absint' ] );
-		add_settings_field(
-			'cfs_cache_duration',
-			__( 'Cache Duration (seconds)', 'cf-summarize' ),
-			[ $this, 'field_cache_duration' ],
-			'cf-summarize-settings',
-			'cfs_section_performance'
-		);
 	}
 
 	/**
@@ -294,12 +263,7 @@ JSCODE;
 		global $wpdb;
 
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery
-		$wpdb->query(
-			"DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_cfs_summary_%'"
-		);
-		$wpdb->query(
-			"DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_cfs_summary_%'"
-		);
+		$wpdb->delete( $wpdb->postmeta, [ 'meta_key' => '_cfs_summary' ] );
 		// phpcs:enable
 
 		add_settings_error(
@@ -329,15 +293,11 @@ JSCODE;
 		$btn_label    = (string) get_option( 'cfs_button_label', 'Article Overview' );
 		$btn_pos      = (string) get_option( 'cfs_button_position', 'before' );
 		$enable_all   = (bool) get_option( 'cfs_enable_all', true );
-		$max_chars    = (int) get_option( 'cfs_max_chars', 6000 );
-		$cache_dur    = (int) get_option( 'cfs_cache_duration', 86400 );
-
 		settings_errors( 'cfs_settings' );
 		?>
 		<style>
 			/* Hide non-active provider rows before JS runs — prevents flicker */
 			.cfs-field-row[data-provider-field]:not([data-provider-field="<?php echo esc_attr( $current_provider ); ?>"]) { display: none; }
-			<?php if ( ! $cache_enabled ) : ?>.cfs-field-row[data-cache-row] { display: none; }<?php endif; ?>
 		</style>
 		<div class="cfs-admin-wrap">
 
@@ -511,18 +471,6 @@ JSCODE;
 
 						<div class="cfs-field-row">
 							<div class="cfs-field-label">
-								<label for="cfs_max_chars"><?php esc_html_e( 'Max Characters', 'cf-summarize' ); ?></label>
-								<span class="cfs-hint"><?php esc_html_e( 'Article characters sent to AI. Recommended: 4000–8000.', 'cf-summarize' ); ?></span>
-							</div>
-							<div>
-								<input type="number" name="cfs_max_chars" id="cfs_max_chars"
-									value="<?php echo esc_attr( (string) $max_chars ); ?>"
-									min="500" max="50000" />
-							</div>
-						</div>
-
-						<div class="cfs-field-row">
-							<div class="cfs-field-label">
 								<label><?php esc_html_e( 'Enable Caching', 'cf-summarize' ); ?></label>
 								<span class="cfs-hint"><?php esc_html_e( 'Avoid regenerating summaries on every page visit.', 'cf-summarize' ); ?></span>
 							</div>
@@ -535,18 +483,6 @@ JSCODE;
 									</span>
 									<span class="cfs-toggle-text"><?php esc_html_e( 'Serve cached summaries until they expire', 'cf-summarize' ); ?></span>
 								</label>
-							</div>
-						</div>
-
-						<div class="cfs-field-row" data-cache-row>
-							<div class="cfs-field-label">
-								<label for="cfs_cache_duration"><?php esc_html_e( 'Cache Duration', 'cf-summarize' ); ?></label>
-								<span class="cfs-hint"><?php esc_html_e( 'Seconds. 86400 = 24 hours.', 'cf-summarize' ); ?></span>
-							</div>
-							<div>
-								<input type="number" name="cfs_cache_duration" id="cfs_cache_duration"
-									value="<?php echo esc_attr( (string) $cache_dur ); ?>"
-									min="1" />
 							</div>
 						</div>
 
@@ -746,22 +682,6 @@ JSCODE;
 		<?php
 	}
 
-	/** Render Max Characters field. */
-	public function field_max_chars(): void {
-		$value = (int) get_option( 'cfs_max_chars', 6000 );
-		?>
-		<input
-			type="number"
-			name="cfs_max_chars"
-			id="cfs_max_chars"
-			value="<?php echo esc_attr( (string) $value ); ?>"
-			min="500"
-			max="50000"
-			class="small-text"
-		/>
-		<p class="description"><?php esc_html_e( 'Maximum characters of article text sent to the AI. Recommended: 4000–8000.', 'cf-summarize' ); ?></p>
-		<?php
-	}
 
 	/** Render Enable Caching checkbox. */
 	public function field_cache_enabled(): void {
@@ -781,21 +701,6 @@ JSCODE;
 		<?php
 	}
 
-	/** Render Cache Duration field. */
-	public function field_cache_duration(): void {
-		$value = (int) get_option( 'cfs_cache_duration', 86400 );
-		?>
-		<input
-			type="number"
-			name="cfs_cache_duration"
-			id="cfs_cache_duration"
-			value="<?php echo esc_attr( (string) $value ); ?>"
-			min="1"
-			class="small-text"
-		/>
-		<p class="description"><?php esc_html_e( 'Seconds to cache each summary. 86400 = 24 hours. Only applies when caching is enabled.', 'cf-summarize' ); ?></p>
-		<?php
-	}
 
 	// ── Sanitization callbacks ────────────────────────────────────────────────
 

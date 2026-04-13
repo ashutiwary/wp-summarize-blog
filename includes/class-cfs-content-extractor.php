@@ -13,24 +13,27 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Class CFS_Content_Extractor
  *
  * Processes raw WP_Post content into clean plain text suitable for AI summarization.
+ * Extracted content is stored as post meta (_cfs_extracted_content) and reused on
+ * subsequent requests. Meta is cleared automatically when the post is updated.
  */
 class CFS_Content_Extractor {
 
 	/**
-	 * Extract and clean text content from a post.
-	 *
-	 * Steps:
-	 *  1. Run through the_content filter (handles shortcodes, page builder blocks).
-	 *  2. Strip all HTML tags.
-	 *  3. Decode HTML entities.
-	 *  4. Normalize whitespace.
-	 *  5. Truncate to configured character limit (cut at last space to avoid mid-word break).
+	 * Return clean plain text for a post, using cached post meta when available.
 	 *
 	 * @param WP_Post $post The post to extract content from.
-	 * @return string Cleaned, truncated plain text.
+	 * @return string Cleaned plain text (full article, no character limit).
 	 * @throws Exception If no usable content is found after extraction.
 	 */
 	public static function extract( WP_Post $post ): string {
+		$meta_key = '_cfs_extracted_content';
+
+		// Return stored content if already extracted.
+		$stored = get_post_meta( $post->ID, $meta_key, true );
+		if ( is_string( $stored ) && '' !== $stored ) {
+			return $stored;
+		}
+
 		// 1. Apply the_content filters so shortcodes and builder content are rendered.
 		$content = apply_filters( 'the_content', $post->post_content );
 
@@ -44,26 +47,15 @@ class CFS_Content_Extractor {
 		$content = (string) preg_replace( '/\s+/', ' ', $content );
 		$content = trim( $content );
 
-		// 5. Truncate to max_chars, breaking at the last space to avoid mid-word cuts.
-		$max_chars = (int) get_option( 'cfs_max_chars', 6000 );
-
-		if ( $max_chars > 0 && mb_strlen( $content ) > $max_chars ) {
-			$truncated = mb_substr( $content, 0, $max_chars );
-			$last_space = mb_strrpos( $truncated, ' ' );
-
-			if ( false !== $last_space ) {
-				$content = mb_substr( $truncated, 0, $last_space );
-			} else {
-				$content = $truncated;
-			}
-		}
-
-		// 6. Guard against empty content.
+		// 5. Guard against empty content.
 		if ( '' === $content ) {
 			throw new Exception(
 				__( 'No content found to summarize.', 'cf-summarize' )
 			);
 		}
+
+		// 6. Persist so future requests skip re-extraction.
+		update_post_meta( $post->ID, $meta_key, $content );
 
 		return $content;
 	}

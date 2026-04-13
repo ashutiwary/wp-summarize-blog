@@ -33,9 +33,7 @@ function cfs_activate(): void {
 		'cfs_button_label'        => 'Article Overview',
 		'cfs_button_position'     => 'before',
 		'cfs_enable_all'          => 1,
-		'cfs_max_chars'           => 6000,
 		'cfs_cache_enabled'       => 0,
-		'cfs_cache_duration'      => 86400,
 	];
 
 	foreach ( $defaults as $option => $value ) {
@@ -158,3 +156,18 @@ function cfs_plugin_action_links( array $links ): array {
 	return $links;
 }
 add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), 'cfs_plugin_action_links' );
+
+/**
+ * Clear stored extracted content whenever a post is saved/updated so the
+ * next summarize request re-extracts from the latest post content.
+ *
+ * @param int $post_id The saved post ID.
+ */
+function cfs_clear_extracted_on_save( int $post_id ): void {
+	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+		return;
+	}
+	delete_post_meta( $post_id, '_cfs_extracted_content' );
+	delete_post_meta( $post_id, '_cfs_summary' );
+}
+add_action( 'save_post', 'cfs_clear_extracted_on_save' );
