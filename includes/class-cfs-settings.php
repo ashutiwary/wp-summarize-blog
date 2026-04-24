@@ -45,6 +45,67 @@ class CFS_Settings {
 	}
 
 	/**
+	 * Return the list of user-customizable panel color options.
+	 *
+	 * option_key => [ 'label' => string, 'default' => hex, 'hint' => string ]
+	 *
+	 * @return array<string,array{label:string,default:string,hint:string}>
+	 */
+	private function get_color_options(): array {
+		return [
+			'cfs_color_bg' => [
+				'label'   => __( 'Background Color', 'cf-summarize' ),
+				'default' => '#eef2ff',
+				'hint'    => __( 'Card background.', 'cf-summarize' ),
+			],
+			'cfs_color_text' => [
+				'label'   => __( 'Text Color', 'cf-summarize' ),
+				'default' => '#374151',
+				'hint'    => __( 'Key points and conclusion body text.', 'cf-summarize' ),
+			],
+			'cfs_color_title' => [
+				'label'   => __( 'Title Color', 'cf-summarize' ),
+				'default' => '#1e1b4b',
+				'hint'    => __( '"Article Overview" heading.', 'cf-summarize' ),
+			],
+			'cfs_color_accent' => [
+				'label'   => __( 'Accent Color', 'cf-summarize' ),
+				'default' => '#6366f1',
+				'hint'    => __( 'Section labels, bullet markers, conclusion border.', 'cf-summarize' ),
+			],
+			'cfs_color_gradient_1' => [
+				'label'   => __( 'Top Gradient — Start', 'cf-summarize' ),
+				'default' => '#6366f1',
+				'hint'    => __( 'Left colour of the decorative top stripe.', 'cf-summarize' ),
+			],
+			'cfs_color_gradient_2' => [
+				'label'   => __( 'Top Gradient — Middle', 'cf-summarize' ),
+				'default' => '#a855f7',
+				'hint'    => __( 'Middle colour of the decorative top stripe.', 'cf-summarize' ),
+			],
+			'cfs_color_gradient_3' => [
+				'label'   => __( 'Top Gradient — End', 'cf-summarize' ),
+				'default' => '#ec4899',
+				'hint'    => __( 'Right colour of the decorative top stripe.', 'cf-summarize' ),
+			],
+		];
+	}
+
+	/**
+	 * Return the effective panel colours: saved value or default.
+	 *
+	 * @return array<string,string> var_name (without leading --) => hex colour
+	 */
+	public function get_effective_colors(): array {
+		$out = [];
+		foreach ( $this->get_color_options() as $key => $meta ) {
+			$saved = (string) get_option( $key, '' );
+			$out[ $key ] = '' !== $saved ? $saved : $meta['default'];
+		}
+		return $out;
+	}
+
+	/**
 	 * Add submenu page under Settings.
 	 */
 	public function add_menu_page(): void {
@@ -126,6 +187,400 @@ class CFS_Settings {
 				if ( badge ) badge.style.display = 'none';
 				btn.style.display = 'none';
 			} );
+		} );
+
+		// ── Modern custom color picker (hex-first) ─────────────────────────
+		// Click a swatch → popover with saturation/value area + hue slider + hex input.
+
+		function clamp01( n ) { return Math.max( 0, Math.min( 1, n ) ); }
+
+		function isValidHex( v ) {
+			return /^#[0-9a-fA-F]{6}$/.test( v );
+		}
+
+		function normalizeHex( v ) {
+			v = ( v || '' ).trim().toLowerCase();
+			if ( v.charAt( 0 ) !== '#' ) { v = '#' + v; }
+			if ( /^#[0-9a-f]{3}$/.test( v ) ) {
+				v = '#' + v.charAt(1) + v.charAt(1) + v.charAt(2) + v.charAt(2) + v.charAt(3) + v.charAt(3);
+			}
+			return v;
+		}
+
+		function hexToRgb( hex ) {
+			var m = /^#?([0-9a-fA-F]{6})$/.exec( hex );
+			if ( ! m ) { return null; }
+			var n = parseInt( m[1], 16 );
+			return { r: ( n >> 16 ) & 0xff, g: ( n >> 8 ) & 0xff, b: n & 0xff };
+		}
+
+		function rgbToHex( r, g, b ) {
+			function h( v ) {
+				v = Math.max( 0, Math.min( 255, Math.round( v ) ) ).toString( 16 );
+				return v.length === 1 ? '0' + v : v;
+			}
+			return '#' + h( r ) + h( g ) + h( b );
+		}
+
+		function rgbToHsv( r, g, b ) {
+			r /= 255; g /= 255; b /= 255;
+			var max = Math.max( r, g, b ), min = Math.min( r, g, b );
+			var d = max - min;
+			var h = 0, s = max === 0 ? 0 : d / max, v = max;
+			if ( d !== 0 ) {
+				if ( max === r )      { h = ( ( g - b ) / d ) % 6; }
+				else if ( max === g ) { h = ( b - r ) / d + 2; }
+				else                  { h = ( r - g ) / d + 4; }
+				h *= 60;
+				if ( h < 0 ) { h += 360; }
+			}
+			return { h: h, s: s * 100, v: v * 100 };
+		}
+
+		function hsvToRgb( h, s, v ) {
+			s /= 100; v /= 100;
+			var c = v * s;
+			var x = c * ( 1 - Math.abs( ( ( h / 60 ) % 2 ) - 1 ) );
+			var m = v - c;
+			var r = 0, g = 0, b = 0;
+			if      ( h < 60 )  { r = c; g = x; }
+			else if ( h < 120 ) { r = x; g = c; }
+			else if ( h < 180 ) { g = c; b = x; }
+			else if ( h < 240 ) { g = x; b = c; }
+			else if ( h < 300 ) { r = x; b = c; }
+			else                { r = c; b = x; }
+			return { r: ( r + m ) * 255, g: ( g + m ) * 255, b: ( b + m ) * 255 };
+		}
+
+		function rgbToHsl( r, g, b ) {
+			r /= 255; g /= 255; b /= 255;
+			var max = Math.max( r, g, b ), min = Math.min( r, g, b );
+			var h = 0, s, l = ( max + min ) / 2;
+			if ( max === min ) {
+				s = 0;
+			} else {
+				var d = max - min;
+				s = l > 0.5 ? d / ( 2 - max - min ) : d / ( max + min );
+				if ( max === r )      { h = ( g - b ) / d + ( g < b ? 6 : 0 ); }
+				else if ( max === g ) { h = ( b - r ) / d + 2; }
+				else                  { h = ( r - g ) / d + 4; }
+				h *= 60;
+			}
+			return { h: h, s: s * 100, l: l * 100 };
+		}
+
+		function hslToRgb( h, s, l ) {
+			h /= 360; s /= 100; l /= 100;
+			var r, g, b;
+			if ( s === 0 ) {
+				r = g = b = l;
+			} else {
+				var hue2rgb = function ( p, q, t ) {
+					if ( t < 0 ) { t += 1; }
+					if ( t > 1 ) { t -= 1; }
+					if ( t < 1 / 6 ) { return p + ( q - p ) * 6 * t; }
+					if ( t < 1 / 2 ) { return q; }
+					if ( t < 2 / 3 ) { return p + ( q - p ) * ( 2 / 3 - t ) * 6; }
+					return p;
+				};
+				var q = l < 0.5 ? l * ( 1 + s ) : l + s - l * s;
+				var p = 2 * l - q;
+				r = hue2rgb( p, q, h + 1 / 3 );
+				g = hue2rgb( p, q, h );
+				b = hue2rgb( p, q, h - 1 / 3 );
+			}
+			return { r: r * 255, g: g * 255, b: b * 255 };
+		}
+
+		var currentPicker = null;
+
+		function closePicker() {
+			if ( ! currentPicker ) { return; }
+			document.removeEventListener( 'pointerdown', currentPicker.onDocDown, true );
+			document.removeEventListener( 'keydown', currentPicker.onKey );
+			window.removeEventListener( 'resize', currentPicker.onReflow );
+			window.removeEventListener( 'scroll', currentPicker.onReflow, true );
+			currentPicker.el.remove();
+			currentPicker = null;
+		}
+
+		function buildPopover() {
+			var pop = document.createElement( 'div' );
+			pop.className = 'cfs-picker-popover';
+			pop.setAttribute( 'role', 'dialog' );
+			pop.innerHTML =
+				'<div class="cfs-picker-sv"><div class="cfs-picker-sv-thumb"></div></div>' +
+				'<div class="cfs-picker-hue"><div class="cfs-picker-hue-thumb"></div></div>' +
+				'<div class="cfs-picker-footer" data-mode="hex">' +
+					'<span class="cfs-picker-preview"></span>' +
+					'<div class="cfs-picker-fields">' +
+						'<div class="cfs-picker-fields-hex">' +
+							'<span class="cfs-picker-hash">#</span>' +
+							'<input type="text" class="cfs-picker-hex" maxlength="6" spellcheck="false" autocomplete="off" />' +
+						'</div>' +
+						'<div class="cfs-picker-fields-rgb">' +
+							'<label class="cfs-picker-num-wrap"><input type="text" class="cfs-picker-num" data-ch="r" maxlength="3" inputmode="numeric" spellcheck="false" autocomplete="off" /><span>R</span></label>' +
+							'<label class="cfs-picker-num-wrap"><input type="text" class="cfs-picker-num" data-ch="g" maxlength="3" inputmode="numeric" spellcheck="false" autocomplete="off" /><span>G</span></label>' +
+							'<label class="cfs-picker-num-wrap"><input type="text" class="cfs-picker-num" data-ch="b" maxlength="3" inputmode="numeric" spellcheck="false" autocomplete="off" /><span>B</span></label>' +
+						'</div>' +
+						'<div class="cfs-picker-fields-hsl">' +
+							'<label class="cfs-picker-num-wrap"><input type="text" class="cfs-picker-num" data-ch="h" maxlength="3" inputmode="numeric" spellcheck="false" autocomplete="off" /><span>H</span></label>' +
+							'<label class="cfs-picker-num-wrap"><input type="text" class="cfs-picker-num" data-ch="s" maxlength="3" inputmode="numeric" spellcheck="false" autocomplete="off" /><span>S</span></label>' +
+							'<label class="cfs-picker-num-wrap"><input type="text" class="cfs-picker-num" data-ch="l" maxlength="3" inputmode="numeric" spellcheck="false" autocomplete="off" /><span>L</span></label>' +
+						'</div>' +
+					'</div>' +
+					'<button type="button" class="cfs-picker-format-toggle" title="Switch format (HEX / RGB / HSL)" aria-label="Switch format">' +
+						'<span class="cfs-picker-format-label">HEX</span>' +
+						'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="12" viewBox="0 0 10 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="2 4.5 5 1.5 8 4.5"/><polyline points="2 7.5 5 10.5 8 7.5"/></svg>' +
+					'</button>' +
+				'</div>';
+			return pop;
+		}
+
+		function positionPopover( pop, trigger ) {
+			var r = trigger.getBoundingClientRect();
+			var pw = pop.offsetWidth || 240;
+			var left = window.scrollX + r.left;
+			var maxLeft = window.scrollX + document.documentElement.clientWidth - pw - 12;
+			if ( left > maxLeft ) { left = maxLeft; }
+			pop.style.top  = ( window.scrollY + r.bottom + 8 ) + 'px';
+			pop.style.left = left + 'px';
+		}
+
+		function openPicker( trigger, hexInput ) {
+			closePicker();
+
+			var initial = normalizeHex( hexInput.value );
+			if ( ! isValidHex( initial ) ) { initial = '#000000'; }
+			var rgb = hexToRgb( initial );
+			var hsv = rgbToHsv( rgb.r, rgb.g, rgb.b );
+
+			var pop = buildPopover();
+			document.body.appendChild( pop );
+
+			var sv       = pop.querySelector( '.cfs-picker-sv' );
+			var svThumb  = pop.querySelector( '.cfs-picker-sv-thumb' );
+			var hue      = pop.querySelector( '.cfs-picker-hue' );
+			var hueThumb = pop.querySelector( '.cfs-picker-hue-thumb' );
+			var preview  = pop.querySelector( '.cfs-picker-preview' );
+			var hexField = pop.querySelector( '.cfs-picker-hex' );
+			var footer   = pop.querySelector( '.cfs-picker-footer' );
+			var toggle   = pop.querySelector( '.cfs-picker-format-toggle' );
+			var toggleLbl = pop.querySelector( '.cfs-picker-format-label' );
+
+			// Per-channel number inputs for RGB + HSL modes.
+			var num = {};
+			pop.querySelectorAll( '.cfs-picker-num' ).forEach( function ( el ) {
+				num[ el.dataset.ch ] = el;
+			} );
+
+			var formats   = [ 'hex', 'rgb', 'hsl' ];
+			var formatIdx = 0; // Default: HEX.
+
+			function activeFormat() { return formats[ formatIdx ]; }
+
+			function render() {
+				var c   = hsvToRgb( hsv.h, hsv.s, hsv.v );
+				var hex = rgbToHex( c.r, c.g, c.b );
+
+				sv.style.background =
+					'linear-gradient(to top, #000, rgba(0,0,0,0)),' +
+					'linear-gradient(to right, #fff, hsl(' + hsv.h + ', 100%, 50%))';
+				svThumb.style.left  = hsv.s + '%';
+				svThumb.style.top   = ( 100 - hsv.v ) + '%';
+				svThumb.style.background = hex;
+				hueThumb.style.left = ( hsv.h / 360 * 100 ) + '%';
+				preview.style.background = hex;
+				trigger.style.background = hex;
+				hexInput.value = hex;
+				hexInput.setCustomValidity( '' );
+
+				// Fill inputs for the active format — don't overwrite whichever
+				// field the user is currently typing into.
+				var active = document.activeElement;
+				var fmt    = activeFormat();
+
+				if ( fmt === 'hex' && active !== hexField ) {
+					hexField.value = hex.slice( 1 );
+				} else if ( fmt === 'rgb' ) {
+					if ( active !== num.r ) { num.r.value = Math.round( c.r ); }
+					if ( active !== num.g ) { num.g.value = Math.round( c.g ); }
+					if ( active !== num.b ) { num.b.value = Math.round( c.b ); }
+				} else if ( fmt === 'hsl' ) {
+					var hsl = rgbToHsl( c.r, c.g, c.b );
+					if ( active !== num.h ) { num.h.value = Math.round( hsl.h ); }
+					if ( active !== num.s ) { num.s.value = Math.round( hsl.s ); }
+					if ( active !== num.l ) { num.l.value = Math.round( hsl.l ); }
+				}
+			}
+
+			function cycleFormat() {
+				formatIdx = ( formatIdx + 1 ) % formats.length;
+				var fmt = activeFormat();
+				footer.dataset.mode = fmt;
+				toggleLbl.textContent = fmt.toUpperCase();
+				render();
+				// Focus the first input of the new mode for quick editing.
+				var first = fmt === 'hex' ? hexField : ( fmt === 'rgb' ? num.r : num.h );
+				first.focus();
+				first.select();
+			}
+
+			toggle.addEventListener( 'click', function ( ev ) {
+				ev.preventDefault();
+				cycleFormat();
+			} );
+
+			function dragHandler( el, moveFn ) {
+				function updateFromEvent( ev ) {
+					var rect = el.getBoundingClientRect();
+					var x = clamp01( ( ev.clientX - rect.left ) / rect.width );
+					var y = clamp01( ( ev.clientY - rect.top ) / rect.height );
+					moveFn( x, y );
+					render();
+				}
+				el.addEventListener( 'pointerdown', function ( ev ) {
+					ev.preventDefault();
+					try { el.setPointerCapture( ev.pointerId ); } catch ( _ ) {}
+					updateFromEvent( ev );
+					function onMove( e ) { updateFromEvent( e ); }
+					function onUp() {
+						el.removeEventListener( 'pointermove', onMove );
+						el.removeEventListener( 'pointerup', onUp );
+						el.removeEventListener( 'pointercancel', onUp );
+					}
+					el.addEventListener( 'pointermove', onMove );
+					el.addEventListener( 'pointerup', onUp );
+					el.addEventListener( 'pointercancel', onUp );
+				} );
+			}
+
+			dragHandler( sv, function ( x, y ) {
+				hsv.s = x * 100;
+				hsv.v = ( 1 - y ) * 100;
+			} );
+
+			dragHandler( hue, function ( x ) {
+				hsv.h = Math.min( 359.999, x * 360 );
+			} );
+
+			hexField.addEventListener( 'input', function () {
+				var v = hexField.value.trim().toLowerCase();
+				if ( v.charAt( 0 ) === '#' ) { v = v.slice( 1 ); }
+				if ( /^[0-9a-f]{6}$/.test( v ) ) {
+					var rgb2 = hexToRgb( '#' + v );
+					var nh   = rgbToHsv( rgb2.r, rgb2.g, rgb2.b );
+					hsv.h = nh.h; hsv.s = nh.s; hsv.v = nh.v;
+					render();
+				}
+			} );
+
+			function readRgbInputs() {
+				var r = parseInt( num.r.value, 10 );
+				var g = parseInt( num.g.value, 10 );
+				var b = parseInt( num.b.value, 10 );
+				if ( ! Number.isFinite( r ) || ! Number.isFinite( g ) || ! Number.isFinite( b ) ) { return; }
+				r = Math.max( 0, Math.min( 255, r ) );
+				g = Math.max( 0, Math.min( 255, g ) );
+				b = Math.max( 0, Math.min( 255, b ) );
+				var nh = rgbToHsv( r, g, b );
+				hsv.h = nh.h; hsv.s = nh.s; hsv.v = nh.v;
+				render();
+			}
+
+			function readHslInputs() {
+				var h = parseFloat( num.h.value );
+				var s = parseFloat( num.s.value );
+				var l = parseFloat( num.l.value );
+				if ( ! Number.isFinite( h ) || ! Number.isFinite( s ) || ! Number.isFinite( l ) ) { return; }
+				h = ( ( h % 360 ) + 360 ) % 360;
+				s = Math.max( 0, Math.min( 100, s ) );
+				l = Math.max( 0, Math.min( 100, l ) );
+				var rgb2 = hslToRgb( h, s, l );
+				var nh   = rgbToHsv( rgb2.r, rgb2.g, rgb2.b );
+				hsv.h = nh.h; hsv.s = nh.s; hsv.v = nh.v;
+				render();
+			}
+
+			[ 'r', 'g', 'b' ].forEach( function ( ch ) {
+				num[ ch ].addEventListener( 'input', readRgbInputs );
+			} );
+			[ 'h', 's', 'l' ].forEach( function ( ch ) {
+				num[ ch ].addEventListener( 'input', readHslInputs );
+			} );
+
+			// Enter inside any field closes the popover.
+			pop.querySelectorAll( 'input' ).forEach( function ( inp ) {
+				inp.addEventListener( 'keydown', function ( ev ) {
+					if ( ev.key === 'Enter' ) { ev.preventDefault(); closePicker(); }
+				} );
+			} );
+
+			var onDocDown = function ( ev ) {
+				if ( pop.contains( ev.target ) || trigger.contains( ev.target ) ) { return; }
+				closePicker();
+			};
+			var onKey = function ( ev ) {
+				if ( ev.key === 'Escape' ) { closePicker(); trigger.focus(); }
+			};
+			var onReflow = function () { positionPopover( pop, trigger ); };
+
+			document.addEventListener( 'pointerdown', onDocDown, true );
+			document.addEventListener( 'keydown', onKey );
+			window.addEventListener( 'resize', onReflow );
+			window.addEventListener( 'scroll', onReflow, true );
+
+			currentPicker = { el: pop, onDocDown: onDocDown, onKey: onKey, onReflow: onReflow };
+
+			render();
+			positionPopover( pop, trigger );
+			hexField.focus();
+			hexField.select();
+		}
+
+		// Wire up each color group.
+		document.querySelectorAll( '.cfs-color-group' ).forEach( function ( group ) {
+			var trigger = group.querySelector( '.cfs-color-trigger' );
+			var hex     = group.querySelector( '.cfs-color-hex' );
+			var reset   = group.querySelector( '.cfs-color-reset' );
+
+			if ( ! trigger || ! hex ) { return; }
+
+			function syncTrigger() {
+				var v = normalizeHex( hex.value );
+				if ( isValidHex( v ) ) { trigger.style.background = v; }
+			}
+			syncTrigger();
+
+			trigger.addEventListener( 'click', function ( e ) {
+				e.preventDefault();
+				openPicker( trigger, hex );
+			} );
+
+			hex.addEventListener( 'input', function () {
+				var v = normalizeHex( hex.value );
+				if ( isValidHex( v ) ) {
+					trigger.style.background = v;
+					hex.setCustomValidity( '' );
+				} else {
+					hex.setCustomValidity( 'Enter a valid hex colour (e.g. #6366f1).' );
+				}
+			} );
+
+			hex.addEventListener( 'blur', function () {
+				var v = normalizeHex( hex.value );
+				if ( isValidHex( v ) ) { hex.value = v; }
+			} );
+
+			if ( reset ) {
+				reset.addEventListener( 'click', function () {
+					var def = reset.dataset.default || '#000000';
+					hex.value = def;
+					trigger.style.background = def;
+					hex.setCustomValidity( '' );
+					if ( currentPicker ) { closePicker(); }
+				} );
+			}
 		} );
 
 	} );
@@ -224,6 +679,18 @@ JSCODE;
 			'cf-summarize-settings',
 			'cfs_section_display'
 		);
+
+		// ── Appearance ────────────────────────────────────────────────────────
+		add_settings_section(
+			'cfs_section_appearance',
+			__( 'Appearance', 'cf-summarize' ),
+			'__return_false',
+			'cf-summarize-settings'
+		);
+
+		foreach ( $this->get_color_options() as $key => $_def ) {
+			register_setting( 'cfs_settings_group', $key, 'sanitize_hex_color' );
+		}
 
 		// ── Performance ───────────────────────────────────────────────────────
 		add_settings_section(
@@ -456,6 +923,68 @@ JSCODE;
 							</div>
 						</div>
 
+					</div>
+				</div>
+
+				<!-- ── Appearance ── -->
+				<div class="cfs-admin-card">
+					<div class="cfs-admin-card-head">
+						<div class="cfs-card-icon" aria-hidden="true">
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+								<path d="M12 21a9 9 0 1 1 0-18 7.5 7.5 0 0 1 7.5 7.5c0 2.485-2.015 4.5-4.5 4.5h-1.5a1.5 1.5 0 0 0-1.5 1.5v.75A2.25 2.25 0 0 1 9.75 19.5v0A2.25 2.25 0 0 0 7.5 21z"/>
+								<circle cx="7.5" cy="10.5" r="1"/>
+								<circle cx="12" cy="7.5" r="1"/>
+								<circle cx="16.5" cy="10.5" r="1"/>
+							</svg>
+						</div>
+						<h2><?php esc_html_e( 'Appearance', 'cf-summarize' ); ?></h2>
+					</div>
+					<div class="cfs-admin-card-body">
+						<?php
+						$colors = $this->get_effective_colors();
+						foreach ( $this->get_color_options() as $key => $meta ) :
+							$val = $colors[ $key ];
+							?>
+							<div class="cfs-field-row">
+								<div class="cfs-field-label">
+									<label for="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $meta['label'] ); ?></label>
+									<?php if ( ! empty( $meta['hint'] ) ) : ?>
+										<span class="cfs-hint"><?php echo esc_html( $meta['hint'] ); ?></span>
+									<?php endif; ?>
+								</div>
+								<div>
+									<div class="cfs-color-group">
+										<button
+											type="button"
+											class="cfs-color-trigger"
+											style="background: <?php echo esc_attr( $val ); ?>;"
+											aria-label="<?php echo esc_attr( sprintf( __( 'Open %s picker', 'cf-summarize' ), $meta['label'] ) ); ?>"
+											aria-haspopup="dialog"
+										></button>
+										<input
+											type="text"
+											class="cfs-color-hex"
+											name="<?php echo esc_attr( $key ); ?>"
+											id="<?php echo esc_attr( $key ); ?>"
+											value="<?php echo esc_attr( $val ); ?>"
+											maxlength="7"
+											spellcheck="false"
+											autocomplete="off"
+											pattern="^#[0-9a-fA-F]{6}$"
+											placeholder="#rrggbb"
+										/>
+										<button
+											type="button"
+											class="cfs-color-reset"
+											data-default="<?php echo esc_attr( $meta['default'] ); ?>"
+											title="<?php esc_attr_e( 'Reset to default', 'cf-summarize' ); ?>"
+										>
+											<?php esc_html_e( 'Reset', 'cf-summarize' ); ?>
+										</button>
+									</div>
+								</div>
+							</div>
+						<?php endforeach; ?>
 					</div>
 				</div>
 

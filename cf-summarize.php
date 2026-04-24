@@ -34,6 +34,13 @@ function cfs_activate(): void {
 		'cfs_button_position'     => 'before',
 		'cfs_enable_all'          => 1,
 		'cfs_cache_enabled'       => 0,
+		'cfs_color_bg'            => '#eef2ff',
+		'cfs_color_text'          => '#374151',
+		'cfs_color_title'         => '#1e1b4b',
+		'cfs_color_accent'        => '#6366f1',
+		'cfs_color_gradient_1'    => '#6366f1',
+		'cfs_color_gradient_2'    => '#a855f7',
+		'cfs_color_gradient_3'    => '#ec4899',
 	];
 
 	foreach ( $defaults as $option => $value ) {
@@ -137,8 +144,44 @@ function cfs_enqueue_assets(): void {
 		[],
 		CFS_VERSION
 	);
+
+	// Inject user-configured panel colors as CSS custom properties.
+	$inline = cfs_build_panel_css_vars();
+	if ( '' !== $inline ) {
+		wp_add_inline_style( 'cf-summarize', $inline );
+	}
 }
 add_action( 'wp_enqueue_scripts', 'cfs_enqueue_assets' );
+
+/**
+ * Build the inline CSS that overrides the panel's color custom properties
+ * from user-configured options. Returns an empty string when no valid
+ * colors are saved (frontend defaults from cf-summarize.css then apply).
+ *
+ * @return string CSS text (no surrounding <style> tags).
+ */
+function cfs_build_panel_css_vars(): string {
+	$map = [
+		'cfs_color_bg'         => '--cfs-bg',
+		'cfs_color_text'       => '--cfs-text',
+		'cfs_color_title'      => '--cfs-title',
+		'cfs_color_accent'     => '--cfs-accent',
+		'cfs_color_gradient_1' => '--cfs-stripe-1',
+		'cfs_color_gradient_2' => '--cfs-stripe-2',
+		'cfs_color_gradient_3' => '--cfs-stripe-3',
+	];
+
+	$decls = '';
+	foreach ( $map as $option => $var ) {
+		$hex = sanitize_hex_color( (string) get_option( $option, '' ) );
+		if ( ! $hex ) {
+			continue;
+		}
+		$decls .= $var . ':' . $hex . ';';
+	}
+
+	return '' === $decls ? '' : '.cfs-panel-card{' . $decls . '}';
+}
 
 /**
  * Add a "Settings" link on the Plugins list page.

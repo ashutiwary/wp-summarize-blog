@@ -14,20 +14,23 @@
 .cfs-admin-cards {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
+	grid-template-areas:
+		"api appearance"
+		"display appearance"
+		"performance appearance";
 	gap: 18px;
 	align-items: start;
 	margin-bottom: 18px;
 }
 
-/* API Configuration card is tallest — let it span both rows in the left column
-   so Display Settings + Performance stack on the right. */
-.cfs-admin-cards .cfs-admin-card:first-child {
-	grid-row: span 2;
-}
-
 .cfs-admin-cards .cfs-admin-card {
 	margin-bottom: 0;
 }
+
+.cfs-admin-cards .cfs-admin-card:nth-of-type(1) { grid-area: api; }
+.cfs-admin-cards .cfs-admin-card:nth-of-type(2) { grid-area: display; }
+.cfs-admin-cards .cfs-admin-card:nth-of-type(3) { grid-area: appearance; }
+.cfs-admin-cards .cfs-admin-card:nth-of-type(4) { grid-area: performance; }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
 
@@ -213,6 +216,317 @@
 .cfs-admin-wrap input::placeholder {
 	color: #94a3b8;
 	font-style: italic;
+}
+
+/* ── Modern color picker ──────────────────────────────────────────────────── */
+
+.cfs-color-group {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+/* Clickable swatch trigger — opens the custom popover. */
+.cfs-color-trigger {
+	width: 34px;
+	height: 34px;
+	padding: 0;
+	border: 1.5px solid #cbd5e1;
+	border-radius: 8px;
+	cursor: pointer;
+	background: #fff;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), inset 0 0 0 2px rgba(255, 255, 255, 0.65);
+	transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+	flex-shrink: 0;
+	background-clip: padding-box;
+}
+
+.cfs-color-trigger:hover {
+	border-color: #0129ac;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1), inset 0 0 0 2px rgba(255, 255, 255, 0.65);
+}
+
+.cfs-color-trigger:active {
+	transform: scale(0.97);
+}
+
+.cfs-color-trigger:focus-visible {
+	outline: 3px solid rgba(1, 41, 172, 0.25);
+	outline-offset: 1px;
+}
+
+/* Hex text input. */
+.cfs-admin-wrap input[type="text"].cfs-color-hex {
+	width: 100px;
+	max-width: 100px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 12.5px;
+	letter-spacing: 0.02em;
+	text-transform: lowercase;
+	padding: 7px 10px;
+}
+
+.cfs-admin-wrap input[type="text"].cfs-color-hex:invalid {
+	border-color: #dc2626;
+	box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+/* Reset-to-default pill button. */
+.cfs-color-reset {
+	font-size: 12px;
+	font-weight: 500;
+	color: #0129ac;
+	background: #fff;
+	border: 1.5px solid #cbd5e1;
+	border-radius: 7px;
+	padding: 6px 12px;
+	cursor: pointer;
+	font-family: inherit;
+	line-height: 1.3;
+	transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.cfs-color-reset:hover {
+	border-color: #0129ac;
+	background: #f5f8ff;
+}
+
+.cfs-color-reset:focus-visible {
+	outline: 3px solid rgba(1, 41, 172, 0.25);
+	outline-offset: 1px;
+}
+
+/* ── Popover (hex-first) ───────────────────────────────────────────────── */
+
+.cfs-picker-popover {
+	position: absolute;
+	z-index: 100000;
+	width: 240px;
+	padding: 12px;
+	background: #ffffff;
+	border: 1px solid #e2e8f0;
+	border-radius: 12px;
+	box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18), 0 4px 10px rgba(15, 23, 42, 0.08);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	box-sizing: border-box;
+	animation: cfs-picker-in 0.15s ease-out;
+}
+
+@keyframes cfs-picker-in {
+	from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+	to   { opacity: 1; transform: none; }
+}
+
+.cfs-picker-sv {
+	position: relative;
+	width: 100%;
+	height: 160px;
+	border-radius: 8px;
+	cursor: crosshair;
+	touch-action: none;
+	overflow: hidden;
+	user-select: none;
+}
+
+.cfs-picker-sv-thumb {
+	position: absolute;
+	width: 14px;
+	height: 14px;
+	border: 2px solid #fff;
+	border-radius: 50%;
+	box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.3);
+	transform: translate(-50%, -50%);
+	pointer-events: none;
+	box-sizing: border-box;
+}
+
+.cfs-picker-hue {
+	position: relative;
+	height: 14px;
+	margin-top: 14px;
+	border-radius: 999px;
+	cursor: ew-resize;
+	touch-action: none;
+	background: linear-gradient(
+		to right,
+		#ff0000 0%,
+		#ffff00 16.66%,
+		#00ff00 33.33%,
+		#00ffff 50%,
+		#0000ff 66.66%,
+		#ff00ff 83.33%,
+		#ff0000 100%
+	);
+	user-select: none;
+}
+
+.cfs-picker-hue-thumb {
+	position: absolute;
+	top: 50%;
+	width: 14px;
+	height: 14px;
+	border: 2px solid #fff;
+	border-radius: 50%;
+	box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.3);
+	transform: translate(-50%, -50%);
+	pointer-events: none;
+	background: transparent;
+	box-sizing: border-box;
+}
+
+.cfs-picker-footer {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 12px;
+}
+
+.cfs-picker-preview {
+	width: 30px;
+	height: 30px;
+	border-radius: 6px;
+	border: 1px solid #cbd5e1;
+	flex-shrink: 0;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+/* Flexible column that holds whichever field set is active. */
+.cfs-picker-fields {
+	flex: 1;
+	min-width: 0;
+}
+
+/* Hide inactive field sets — only the one matching the footer data-mode shows. */
+.cfs-picker-fields-hex,
+.cfs-picker-fields-rgb,
+.cfs-picker-fields-hsl {
+	display: none;
+}
+
+.cfs-picker-footer[data-mode="hex"] .cfs-picker-fields-hex { display: flex; }
+.cfs-picker-footer[data-mode="rgb"] .cfs-picker-fields-rgb { display: flex; }
+.cfs-picker-footer[data-mode="hsl"] .cfs-picker-fields-hsl { display: flex; }
+
+/* HEX mode: single input with a leading # prefix. */
+.cfs-picker-fields-hex {
+	align-items: center;
+	background: #f8fafc;
+	border: 1.5px solid #cbd5e1;
+	border-radius: 7px;
+	padding: 0 8px;
+	transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.cfs-picker-fields-hex:focus-within {
+	border-color: #0129ac;
+	box-shadow: 0 0 0 3px rgba(1, 41, 172, 0.12);
+	background: #fff;
+}
+
+.cfs-picker-hash {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	color: #94a3b8;
+	font-size: 13px;
+	user-select: none;
+}
+
+/* RGB / HSL mode: three channel inputs side-by-side with tiny labels underneath. */
+.cfs-picker-fields-rgb,
+.cfs-picker-fields-hsl {
+	gap: 6px;
+}
+
+.cfs-picker-num-wrap {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	flex: 1;
+	min-width: 0;
+}
+
+.cfs-picker-num-wrap > span {
+	font-size: 10px;
+	font-weight: 600;
+	color: #94a3b8;
+	letter-spacing: 0.08em;
+	margin-top: 2px;
+	user-select: none;
+}
+
+/* Format toggle button on the right. */
+.cfs-picker-format-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 6px 8px;
+	background: #f8fafc;
+	border: 1.5px solid #cbd5e1;
+	border-radius: 7px;
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 11px;
+	font-weight: 600;
+	color: #475569;
+	letter-spacing: 0.06em;
+	transition: border-color 0.15s, background 0.15s, color 0.15s;
+	flex-shrink: 0;
+	line-height: 1;
+	height: 32px;
+}
+
+.cfs-picker-format-toggle:hover {
+	border-color: #0129ac;
+	background: #f5f8ff;
+	color: #0129ac;
+}
+
+.cfs-picker-format-toggle:focus-visible {
+	outline: 3px solid rgba(1, 41, 172, 0.25);
+	outline-offset: 1px;
+}
+
+.cfs-picker-format-toggle svg {
+	opacity: 0.6;
+}
+
+/* Override the admin-wide input styling inside the popover. */
+.cfs-admin-wrap input[type="text"].cfs-picker-hex,
+.cfs-admin-wrap input[type="text"].cfs-picker-num,
+input[type="text"].cfs-picker-hex,
+input[type="text"].cfs-picker-num {
+	border: none !important;
+	background: transparent !important;
+	padding: 7px 4px !important;
+	margin: 0 !important;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+	font-size: 13px !important;
+	text-transform: lowercase !important;
+	letter-spacing: 0.03em !important;
+	outline: none !important;
+	width: 100% !important;
+	max-width: none !important;
+	box-shadow: none !important;
+	color: #1e293b !important;
+	height: auto !important;
+	line-height: 1.4 !important;
+	text-align: left;
+}
+
+.cfs-admin-wrap input[type="text"].cfs-picker-num,
+input[type="text"].cfs-picker-num {
+	text-align: center;
+	background: #f8fafc !important;
+	border: 1.5px solid #cbd5e1 !important;
+	border-radius: 7px !important;
+	padding: 6px 4px !important;
+	transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.cfs-admin-wrap input[type="text"].cfs-picker-num:focus,
+input[type="text"].cfs-picker-num:focus {
+	border-color: #0129ac !important;
+	background: #fff !important;
+	box-shadow: 0 0 0 3px rgba(1, 41, 172, 0.12) !important;
 }
 
 /* ── Select ──────────────────────────────────────────────────────────────── */
@@ -438,10 +752,14 @@ button.cfs-remove-key:hover {
 @media screen and (max-width: 1100px) {
 	.cfs-admin-cards {
 		grid-template-columns: 1fr;
+		grid-template-areas: none;
 	}
 
-	.cfs-admin-cards .cfs-admin-card:first-child {
-		grid-row: auto;
+	.cfs-admin-cards .cfs-admin-card:nth-of-type(1),
+	.cfs-admin-cards .cfs-admin-card:nth-of-type(2),
+	.cfs-admin-cards .cfs-admin-card:nth-of-type(3),
+	.cfs-admin-cards .cfs-admin-card:nth-of-type(4) {
+		grid-area: auto;
 	}
 }
 
