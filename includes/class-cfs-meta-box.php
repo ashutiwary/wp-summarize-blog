@@ -22,7 +22,7 @@ class CFS_Meta_Box {
 	const NONCE_ACT = 'cfs_save_meta_box';
 
 	/**
-	 * Constructor — hook into WordPress.
+	 * Constructor - hook into WordPress.
 	 */
 	public function __construct() {
 		add_action( 'add_meta_boxes', [ $this, 'register' ] );
@@ -58,7 +58,7 @@ class CFS_Meta_Box {
 		$meta_value = get_post_meta( $post->ID, self::META_KEY, true );
 
 		if ( '' === $meta_value ) {
-			// Post has no explicit override — reflect the global default.
+			// Post has no explicit override - reflect the global default.
 			$checked = (bool) get_option( 'cfs_enable_all', true );
 		} else {
 			$checked = '1' === $meta_value;

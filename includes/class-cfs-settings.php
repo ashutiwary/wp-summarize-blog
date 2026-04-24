@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class CFS_Settings {
 
 	/**
-	 * Constructor — hook into WordPress admin.
+	 * Constructor - hook into WordPress admin.
 	 */
 	public function __construct() {
 		add_action( 'admin_menu', [ $this, 'add_menu_page' ] );
@@ -74,21 +74,64 @@ class CFS_Settings {
 				'hint'    => __( 'Section labels, bullet markers, conclusion border.', 'cf-summarize' ),
 			],
 			'cfs_color_gradient_1' => [
-				'label'   => __( 'Top Gradient — Start', 'cf-summarize' ),
+				'label'   => __( 'Top Gradient - Start', 'cf-summarize' ),
 				'default' => '#6366f1',
 				'hint'    => __( 'Left colour of the decorative top stripe.', 'cf-summarize' ),
 			],
 			'cfs_color_gradient_2' => [
-				'label'   => __( 'Top Gradient — Middle', 'cf-summarize' ),
+				'label'   => __( 'Top Gradient - Middle', 'cf-summarize' ),
 				'default' => '#a855f7',
 				'hint'    => __( 'Middle colour of the decorative top stripe.', 'cf-summarize' ),
 			],
 			'cfs_color_gradient_3' => [
-				'label'   => __( 'Top Gradient — End', 'cf-summarize' ),
+				'label'   => __( 'Top Gradient - End', 'cf-summarize' ),
 				'default' => '#ec4899',
 				'hint'    => __( 'Right colour of the decorative top stripe.', 'cf-summarize' ),
 			],
+			'cfs_btn_bg' => [
+				'label'   => __( 'Button Background', 'cf-summarize' ),
+				'default' => '#ffffff',
+				'hint'    => __( 'Fill colour of the "Article Overview" button.', 'cf-summarize' ),
+				'group'   => 'button',
+			],
+			'cfs_btn_text' => [
+				'label'   => __( 'Button Text Color', 'cf-summarize' ),
+				'default' => '#1e1b4b',
+				'hint'    => __( 'Label colour inside the button.', 'cf-summarize' ),
+				'group'   => 'button',
+			],
+			'cfs_btn_border' => [
+				'label'   => __( 'Button Border', 'cf-summarize' ),
+				'default' => '#e5e7eb',
+				'hint'    => __( 'Outline colour of the button in its idle state.', 'cf-summarize' ),
+				'group'   => 'button',
+			],
 		];
+	}
+
+	/**
+	 * Supported button shape slugs → border-radius CSS value.
+	 *
+	 * @return array<string,array{label:string,radius:string}>
+	 */
+	public function get_button_shapes(): array {
+		return [
+			'pill'    => [ 'label' => __( 'Pill (fully rounded)', 'cf-summarize' ), 'radius' => '999px' ],
+			'rounded' => [ 'label' => __( 'Rounded corners',      'cf-summarize' ), 'radius' => '10px'  ],
+			'square'  => [ 'label' => __( 'Square corners',       'cf-summarize' ), 'radius' => '4px'   ],
+		];
+	}
+
+	/**
+	 * Sanitize the button-shape option against the supported list.
+	 *
+	 * @param mixed $value Raw input value.
+	 * @return string Valid shape slug; falls back to 'pill'.
+	 */
+	public function sanitize_button_shape( $value ): string {
+		$allowed = array_keys( $this->get_button_shapes() );
+		$value   = sanitize_text_field( (string) $value );
+		return in_array( $value, $allowed, true ) ? $value : 'pill';
 	}
 
 	/**
@@ -119,7 +162,7 @@ class CFS_Settings {
 	}
 
 	/**
-	 * Enqueue inline admin JS — only on our settings page.
+	 * Enqueue inline admin JS - only on our settings page.
 	 *
 	 * @param string $hook Current admin page hook suffix.
 	 */
@@ -173,7 +216,7 @@ class CFS_Settings {
 		}
 
 
-		// "Remove saved key" buttons — clear the input so an empty value is saved.
+		// "Remove saved key" buttons - clear the input so an empty value is saved.
 		document.querySelectorAll( '.cfs-remove-key' ).forEach( function ( btn ) {
 			btn.addEventListener( 'click', function () {
 				var input = document.getElementById( btn.dataset.target );
@@ -395,7 +438,7 @@ class CFS_Settings {
 				hexInput.value = hex;
 				hexInput.setCustomValidity( '' );
 
-				// Fill inputs for the active format — don't overwrite whichever
+				// Fill inputs for the active format - don't overwrite whichever
 				// field the user is currently typing into.
 				var active = document.activeElement;
 				var fmt    = activeFormat();
@@ -583,6 +626,27 @@ class CFS_Settings {
 			}
 		} );
 
+		// ── Appearance tabs ───────────────────────────────────────────────────
+		document.querySelectorAll( '.cfs-app-tab-btn' ).forEach( function ( btn ) {
+			btn.addEventListener( 'click', function () {
+				var tab  = btn.dataset.tab;
+				var body = btn.closest( '.cfs-admin-card-body' );
+				if ( ! body ) { return; }
+				body.querySelectorAll( '.cfs-app-tab-btn' ).forEach( function ( b ) {
+					b.classList.remove( 'is-active' );
+					b.setAttribute( 'aria-selected', 'false' );
+				} );
+				body.querySelectorAll( '.cfs-tab-panel' ).forEach( function ( p ) {
+					p.classList.remove( 'is-active' );
+				} );
+				btn.classList.add( 'is-active' );
+				btn.setAttribute( 'aria-selected', 'true' );
+				var panel = body.querySelector( '.cfs-tab-panel[data-tab="' + tab + '"]' );
+				if ( panel ) { panel.classList.add( 'is-active' ); }
+				closePicker();
+			} );
+		} );
+
 	} );
 }() );
 JSCODE;
@@ -692,6 +756,8 @@ JSCODE;
 			register_setting( 'cfs_settings_group', $key, 'sanitize_hex_color' );
 		}
 
+		register_setting( 'cfs_settings_group', 'cfs_btn_shape', [ $this, 'sanitize_button_shape' ] );
+
 		// ── Performance ───────────────────────────────────────────────────────
 		add_settings_section(
 			'cfs_section_performance',
@@ -763,7 +829,7 @@ JSCODE;
 		settings_errors( 'cfs_settings' );
 		?>
 		<style>
-			/* Hide non-active provider rows before JS runs — prevents flicker */
+			/* Hide non-active provider rows before JS runs - prevents flicker */
 			.cfs-field-row[data-provider-field]:not([data-provider-field="<?php echo esc_attr( $current_provider ); ?>"]) { display: none; }
 		</style>
 		<div class="cfs-admin-wrap">
@@ -940,51 +1006,129 @@ JSCODE;
 						<h2><?php esc_html_e( 'Appearance', 'cf-summarize' ); ?></h2>
 					</div>
 					<div class="cfs-admin-card-body">
+
+						<!-- Tab navigation -->
+						<div class="cfs-app-tabs" role="tablist">
+							<button type="button" class="cfs-app-tab-btn is-active" role="tab" aria-selected="true" data-tab="panel"><?php esc_html_e( 'Panel Colors', 'cf-summarize' ); ?></button>
+							<button type="button" class="cfs-app-tab-btn" role="tab" aria-selected="false" data-tab="button"><?php esc_html_e( 'Button Style', 'cf-summarize' ); ?></button>
+						</div>
+
 						<?php
-						$colors = $this->get_effective_colors();
-						foreach ( $this->get_color_options() as $key => $meta ) :
-							$val = $colors[ $key ];
-							?>
-							<div class="cfs-field-row">
-								<div class="cfs-field-label">
-									<label for="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $meta['label'] ); ?></label>
-									<?php if ( ! empty( $meta['hint'] ) ) : ?>
-										<span class="cfs-hint"><?php echo esc_html( $meta['hint'] ); ?></span>
-									<?php endif; ?>
-								</div>
-								<div>
-									<div class="cfs-color-group">
-										<button
-											type="button"
-											class="cfs-color-trigger"
-											style="background: <?php echo esc_attr( $val ); ?>;"
-											aria-label="<?php echo esc_attr( sprintf( __( 'Open %s picker', 'cf-summarize' ), $meta['label'] ) ); ?>"
-											aria-haspopup="dialog"
-										></button>
-										<input
-											type="text"
-											class="cfs-color-hex"
-											name="<?php echo esc_attr( $key ); ?>"
-											id="<?php echo esc_attr( $key ); ?>"
-											value="<?php echo esc_attr( $val ); ?>"
-											maxlength="7"
-											spellcheck="false"
-											autocomplete="off"
-											pattern="^#[0-9a-fA-F]{6}$"
-											placeholder="#rrggbb"
-										/>
-										<button
-											type="button"
-											class="cfs-color-reset"
-											data-default="<?php echo esc_attr( $meta['default'] ); ?>"
-											title="<?php esc_attr_e( 'Reset to default', 'cf-summarize' ); ?>"
-										>
-											<?php esc_html_e( 'Reset', 'cf-summarize' ); ?>
-										</button>
+						$colors        = $this->get_effective_colors();
+						$current_shape = $this->sanitize_button_shape( (string) get_option( 'cfs_btn_shape', 'pill' ) );
+						$shapes        = $this->get_button_shapes();
+						?>
+
+						<!-- Panel Colors tab panel -->
+						<div class="cfs-tab-panel is-active" data-tab="panel" role="tabpanel">
+							<?php foreach ( $this->get_color_options() as $key => $meta ) : ?>
+								<?php if ( isset( $meta['group'] ) && 'button' === $meta['group'] ) : continue; endif; ?>
+								<?php $val = $colors[ $key ]; ?>
+								<div class="cfs-field-row">
+									<div class="cfs-field-label">
+										<label for="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $meta['label'] ); ?></label>
+										<?php if ( ! empty( $meta['hint'] ) ) : ?>
+											<span class="cfs-hint"><?php echo esc_html( $meta['hint'] ); ?></span>
+										<?php endif; ?>
+									</div>
+									<div>
+										<div class="cfs-color-group">
+											<button
+												type="button"
+												class="cfs-color-trigger"
+												style="background: <?php echo esc_attr( $val ); ?>;"
+												aria-label="<?php echo esc_attr( sprintf( __( 'Open %s picker', 'cf-summarize' ), $meta['label'] ) ); ?>"
+												aria-haspopup="dialog"
+											></button>
+											<input
+												type="text"
+												class="cfs-color-hex"
+												name="<?php echo esc_attr( $key ); ?>"
+												id="<?php echo esc_attr( $key ); ?>"
+												value="<?php echo esc_attr( $val ); ?>"
+												maxlength="7"
+												spellcheck="false"
+												autocomplete="off"
+												pattern="^#[0-9a-fA-F]{6}$"
+												placeholder="#rrggbb"
+											/>
+											<button
+												type="button"
+												class="cfs-color-reset"
+												data-default="<?php echo esc_attr( $meta['default'] ); ?>"
+												title="<?php esc_attr_e( 'Reset to default', 'cf-summarize' ); ?>"
+											>
+												<?php esc_html_e( 'Reset', 'cf-summarize' ); ?>
+											</button>
+										</div>
 									</div>
 								</div>
+							<?php endforeach; ?>
+						</div>
+
+						<!-- Button Style tab panel -->
+						<div class="cfs-tab-panel" data-tab="button" role="tabpanel">
+							<?php foreach ( $this->get_color_options() as $key => $meta ) : ?>
+								<?php if ( ! isset( $meta['group'] ) || 'button' !== $meta['group'] ) : continue; endif; ?>
+								<?php $val = $colors[ $key ]; ?>
+								<div class="cfs-field-row">
+									<div class="cfs-field-label">
+										<label for="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $meta['label'] ); ?></label>
+										<?php if ( ! empty( $meta['hint'] ) ) : ?>
+											<span class="cfs-hint"><?php echo esc_html( $meta['hint'] ); ?></span>
+										<?php endif; ?>
+									</div>
+									<div>
+										<div class="cfs-color-group">
+											<button
+												type="button"
+												class="cfs-color-trigger"
+												style="background: <?php echo esc_attr( $val ); ?>;"
+												aria-label="<?php echo esc_attr( sprintf( __( 'Open %s picker', 'cf-summarize' ), $meta['label'] ) ); ?>"
+												aria-haspopup="dialog"
+											></button>
+											<input
+												type="text"
+												class="cfs-color-hex"
+												name="<?php echo esc_attr( $key ); ?>"
+												id="<?php echo esc_attr( $key ); ?>"
+												value="<?php echo esc_attr( $val ); ?>"
+												maxlength="7"
+												spellcheck="false"
+												autocomplete="off"
+												pattern="^#[0-9a-fA-F]{6}$"
+												placeholder="#rrggbb"
+											/>
+											<button
+												type="button"
+												class="cfs-color-reset"
+												data-default="<?php echo esc_attr( $meta['default'] ); ?>"
+												title="<?php esc_attr_e( 'Reset to default', 'cf-summarize' ); ?>"
+											>
+												<?php esc_html_e( 'Reset', 'cf-summarize' ); ?>
+											</button>
+										</div>
+									</div>
+								</div>
+							<?php endforeach; ?>
+
+							<div class="cfs-field-row">
+								<div class="cfs-field-label">
+									<label for="cfs_btn_shape"><?php esc_html_e( 'Button Shape', 'cf-summarize' ); ?></label>
+									<span class="cfs-hint"><?php esc_html_e( 'Corner style for the button outline.', 'cf-summarize' ); ?></span>
+								</div>
+								<div>
+									<select name="cfs_btn_shape" id="cfs_btn_shape" class="cfs-select">
+										<?php foreach ( $shapes as $slug => $shape ) : ?>
+											<option value="<?php echo esc_attr( $slug ); ?>" <?php selected( $current_shape, $slug ); ?>>
+												<?php echo esc_html( $shape['label'] ); ?>
+											</option>
+										<?php endforeach; ?>
+									</select>
+								</div>
 							</div>
-						<?php endforeach; ?>
+						</div>
+
 					</div>
 				</div>
 
@@ -1036,7 +1180,7 @@ JSCODE;
 
 	/**
 	 * Render the Provider select field.
-	 * Options are driven by get_providers() — no hardcoded provider names.
+	 * Options are driven by get_providers() - no hardcoded provider names.
 	 */
 	public function field_provider(): void {
 		$current   = (string) get_option( 'cfs_provider', 'openai' );
@@ -1230,7 +1374,7 @@ JSCODE;
 			/>
 			<?php esc_html_e( 'Cache AI summaries to avoid regenerating on every visit', 'cf-summarize' ); ?>
 		</label>
-		<p class="description"><?php esc_html_e( 'Disabled by default — every visit generates a fresh summary. Enable to serve the same summary until the cache expires.', 'cf-summarize' ); ?></p>
+		<p class="description"><?php esc_html_e( 'Disabled by default - every visit generates a fresh summary. Enable to serve the same summary until the cache expires.', 'cf-summarize' ); ?></p>
 		<?php
 	}
 

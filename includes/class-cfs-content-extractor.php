@@ -43,7 +43,7 @@ class CFS_Content_Extractor {
 		// 3. Decode HTML entities (e.g. &amp; → &, &#8217; → ').
 		$content = html_entity_decode( $content, ENT_QUOTES, 'UTF-8' );
 
-		// 4. Normalize whitespace — collapse tabs, newlines, multiple spaces.
+		// 4. Normalize whitespace - collapse tabs, newlines, multiple spaces.
 		$content = (string) preg_replace( '/\s+/', ' ', $content );
 		$content = trim( $content );
 

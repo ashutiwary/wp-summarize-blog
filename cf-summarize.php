@@ -21,7 +21,7 @@ define( 'CFS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CFS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 /**
- * Activation hook — set default options if not already set.
+ * Activation hook - set default options if not already set.
  */
 function cfs_activate(): void {
 	$defaults = [
@@ -41,6 +41,10 @@ function cfs_activate(): void {
 		'cfs_color_gradient_1'    => '#6366f1',
 		'cfs_color_gradient_2'    => '#a855f7',
 		'cfs_color_gradient_3'    => '#ec4899',
+		'cfs_btn_bg'              => '#ffffff',
+		'cfs_btn_text'            => '#1e1b4b',
+		'cfs_btn_border'          => '#e5e7eb',
+		'cfs_btn_shape'           => 'pill',
 	];
 
 	foreach ( $defaults as $option => $value ) {
@@ -98,10 +102,25 @@ function cfs_inject_button( string $content ): string {
 	$button_label = esc_html( get_option( 'cfs_button_label', 'Article Overview' ) );
 	$position     = get_option( 'cfs_button_position', 'before' );
 
+	// Inline sparkle SVG with a self-contained gradient definition.
+	// Two stars (big + small) compose the "AI twinkle" mark.
+	$sparkle_svg = '<svg class="cfs-btn-sparkle" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">'
+		. '<defs>'
+		. '<linearGradient id="cfs-sparkle-gradient" x1="0" y1="0" x2="1" y2="1">'
+		. '<stop offset="0%" stop-color="#6366f1"/>'
+		. '<stop offset="50%" stop-color="#a855f7"/>'
+		. '<stop offset="100%" stop-color="#ec4899"/>'
+		. '</linearGradient>'
+		. '</defs>'
+		. '<path class="cfs-btn-sparkle-big" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09z" fill="url(#cfs-sparkle-gradient)"/>'
+		. '<path class="cfs-btn-sparkle-small" d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456z" fill="url(#cfs-sparkle-gradient)"/>'
+		. '</svg>';
+
 	$button_html = sprintf(
-		'<div class="cfs-wrap" data-post-id="%1$s"><button class="cfs-btn" data-post-id="%1$s" data-nonce="%2$s">%3$s</button></div>',
+		'<div class="cfs-wrap" data-post-id="%1$s"><button class="cfs-btn" type="button" data-post-id="%1$s" data-nonce="%2$s">%3$s<span class="cfs-btn-label">%4$s</span></button></div>',
 		esc_attr( (string) $post_id ),
 		esc_attr( $nonce ),
+		$sparkle_svg,
 		$button_label
 	);
 
@@ -154,14 +173,17 @@ function cfs_enqueue_assets(): void {
 add_action( 'wp_enqueue_scripts', 'cfs_enqueue_assets' );
 
 /**
- * Build the inline CSS that overrides the panel's color custom properties
+ * Build the inline CSS that overrides the panel + button custom properties
  * from user-configured options. Returns an empty string when no valid
- * colors are saved (frontend defaults from cf-summarize.css then apply).
+ * values are saved (frontend defaults from cf-summarize.css then apply).
+ *
+ * All vars are emitted on `.cfs-wrap` - the root wrapper - so they cascade
+ * into both the button and the panel card.
  *
  * @return string CSS text (no surrounding <style> tags).
  */
 function cfs_build_panel_css_vars(): string {
-	$map = [
+	$color_map = [
 		'cfs_color_bg'         => '--cfs-bg',
 		'cfs_color_text'       => '--cfs-text',
 		'cfs_color_title'      => '--cfs-title',
@@ -169,10 +191,13 @@ function cfs_build_panel_css_vars(): string {
 		'cfs_color_gradient_1' => '--cfs-stripe-1',
 		'cfs_color_gradient_2' => '--cfs-stripe-2',
 		'cfs_color_gradient_3' => '--cfs-stripe-3',
+		'cfs_btn_bg'           => '--cfs-btn-bg',
+		'cfs_btn_text'         => '--cfs-btn-text',
+		'cfs_btn_border'       => '--cfs-btn-border',
 	];
 
 	$decls = '';
-	foreach ( $map as $option => $var ) {
+	foreach ( $color_map as $option => $var ) {
 		$hex = sanitize_hex_color( (string) get_option( $option, '' ) );
 		if ( ! $hex ) {
 			continue;
@@ -180,7 +205,17 @@ function cfs_build_panel_css_vars(): string {
 		$decls .= $var . ':' . $hex . ';';
 	}
 
-	return '' === $decls ? '' : '.cfs-panel-card{' . $decls . '}';
+	$shape_radius = [
+		'pill'    => '999px',
+		'rounded' => '10px',
+		'square'  => '4px',
+	];
+	$shape = (string) get_option( 'cfs_btn_shape', 'pill' );
+	if ( isset( $shape_radius[ $shape ] ) ) {
+		$decls .= '--cfs-btn-radius:' . $shape_radius[ $shape ] . ';';
+	}
+
+	return '' === $decls ? '' : '.cfs-wrap{' . $decls . '}';
 }
 
 /**

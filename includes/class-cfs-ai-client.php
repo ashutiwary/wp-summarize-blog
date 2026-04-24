@@ -22,7 +22,7 @@ class CFS_AI_Client {
 	 * @return string
 	 */
 	private function system_prompt(): string {
-		return 'You are a helpful assistant. Analyze the article and respond with ONLY a valid JSON object — no markdown fences, no extra text. Use this exact schema: {"key_points":["point 1","point 2",...],"conclusion":"conclusion text"}. Extract maximum 5 key points as the content warrants — include every distinct, meaningful point without artificially limiting or padding the count. Each key point should be a short, informative sentence. Write a conclusion that is as long as the content requires to accurately summarize the article\'s overall message.';
+		return 'You are a helpful assistant. Analyze the article and respond with ONLY a valid JSON object - no markdown fences, no extra text. Use this exact schema: {"key_points":["point 1","point 2",...],"conclusion":"conclusion text"}. Extract maximum 5 key points as the content warrants - include every distinct, meaningful point without artificially limiting or padding the count. Each key point should be a short, informative sentence. Write a conclusion that is as long as the content requires to accurately summarize the article\'s overall message.';
 	}
 
 	/**
@@ -155,7 +155,7 @@ class CFS_AI_Client {
 			/* translators: 1: HTTP status code, 2: API error message */
 			throw new Exception(
 				sprintf(
-					__( 'AI API returned error: %1$s — %2$s', 'cf-summarize' ),
+					__( 'AI API returned error: %1$s - %2$s', 'cf-summarize' ),
 					$response_code,
 					$error_msg
 				)
@@ -249,7 +249,7 @@ class CFS_AI_Client {
 			/* translators: 1: HTTP status code, 2: API error message */
 			throw new Exception(
 				sprintf(
-					__( 'AI API returned error: %1$s — %2$s', 'cf-summarize' ),
+					__( 'AI API returned error: %1$s - %2$s', 'cf-summarize' ),
 					$response_code,
 					$error_msg
 				)

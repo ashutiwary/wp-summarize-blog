@@ -1,79 +1,133 @@
 /*
- * CF-Summarize — Frontend styles
+ * CF-Summarize - Frontend styles
  * Scoped to .cfs-wrap and .cfs-panel. BEM naming, theme-agnostic.
  */
 
 /* ── Button wrapper ────────────────────────────────────────────────────── */
 .cfs-wrap {
+	/*
+	 * Themeable CSS custom properties - overridden by inline <style> emitted
+	 * from the saved admin options. Defaults live here so the whole component
+	 * (button + panel) inherits them and works even when no options are saved.
+	 */
+
+	/* Panel colors. */
+	--cfs-bg:          #eef2ff;
+	--cfs-text:        #374151;
+	--cfs-title:       #1e1b4b;
+	--cfs-accent:      #6366f1;
+	--cfs-stripe-1:    #6366f1;
+	--cfs-stripe-2:    #a855f7;
+	--cfs-stripe-3:    #ec4899;
+
+	/* Button colors + shape. */
+	--cfs-btn-bg:      #ffffff;
+	--cfs-btn-text:    #1e1b4b;
+	--cfs-btn-border:  #e5e7eb;
+	--cfs-btn-radius:  999px; /* pill (default) */
+
 	margin: 12px 0 20px 0;
 }
 
-/* ── Button ────────────────────────────────────────────────────────────── */
+/* ── Button - AI sparkle pill ──────────────────────────────────────────── */
 .cfs-btn {
-	display:          inline-flex !important;
-	align-items:      center !important;
-	gap:              6px !important;
-	padding:          5px 10px !important;
-	background:       transparent !important;
-	color:            #0129ac !important;
-	border:           1px solid #0129ac !important;
-	border-radius:    6px !important;
-	font-size:        14px !important;
-	font-weight:      500 !important;
-	cursor:           pointer !important;
-	transition:       background 0.2s ease, color 0.2s ease, border-color 0.2s ease !important;
-	line-height:      1.4 !important;
-	text-decoration:  none !important;
-	font-family:      inherit !important;
-	outline:          none !important;
-	box-shadow:       none !important;
-	vertical-align:   baseline !important;
-	white-space:      nowrap !important;
+	display:            inline-flex !important;
+	align-items:        center !important;
+	gap:                8px !important;
+	padding:            9px 18px !important;
+	background:         var(--cfs-btn-bg) !important;
+	color:              var(--cfs-btn-text) !important;
+	border:             1.5px solid var(--cfs-btn-border) !important;
+	border-radius:      var(--cfs-btn-radius) !important;
+	font-size:          14px !important;
+	font-weight:        500 !important;
+	cursor:             pointer !important;
+	line-height:        1.4 !important;
+	text-decoration:    none !important;
+	font-family:        inherit !important;
+	outline:            none !important;
+	box-shadow:         0 1px 3px rgba(15, 23, 42, 0.08),
+	                    0 4px 16px rgba(99, 102, 241, 0.14) !important;
+	transition:         box-shadow 0.22s ease, border-color 0.22s ease, transform 0.18s ease !important;
+	vertical-align:     baseline !important;
+	white-space:        nowrap !important;
+	letter-spacing:     -0.005em !important;
 	-webkit-appearance: none !important;
-	appearance:       none !important;
+	appearance:         none !important;
 }
 
+.cfs-btn .cfs-btn-label {
+	display:     inline-block;
+	line-height: 1;
+}
+
+/* Hover - subtle. No transform, no gradient flip, no icon twinkle.
+   Just a slightly darker border (derived from the user's border color via
+   color-mix) and a gently stronger shadow so the button feels responsive
+   without jumping around. */
 .cfs-btn:hover {
-	background:   #0129ac !important;
-	border-color: #0129ac !important;
-	color:        #ffffff !important;
-	outline:      none !important;
-	box-shadow:   none !important;
-}
-
-.cfs-btn:active {
-	background:   #001a82 !important;
-	border-color: #001a82 !important;
-	color:        #ffffff !important;
-	outline:      none !important;
-	box-shadow:   none !important;
-}
-
-.cfs-btn:focus {
-	outline:    none !important;
-	box-shadow: none !important;
+	border-color: #d1d5db !important; /* fallback when color-mix is unavailable */
+	border-color: color-mix(in srgb, var(--cfs-btn-border), #1e1b4b 22%) !important;
+	transform:    translateY(-2px) !important;
+	box-shadow:   0 2px 6px rgba(15, 23, 42, 0.10),
+	              0 8px 24px rgba(99, 102, 241, 0.22) !important;
 }
 
 .cfs-btn:focus-visible {
-	background:   #0129ac !important;
-	border-color: #0129ac !important;
-	color:        #ffffff !important;
-	outline:      none !important;
-	box-shadow:   0 0 0 3px rgba(1, 41, 172, 0.35) !important;
+	box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.22),
+	            0 4px 12px rgba(99, 102, 241, 0.12) !important;
 }
 
-/* Chevron after the label — rotates when panel is open */
+.cfs-btn:active {
+	transform:  translateY(0) !important;
+	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+}
+
+/* Open state - the distinctive visual: gradient border (tied to the panel's
+   top-stripe colors) so the button clearly "belongs" to the open card. */
+.cfs-btn[aria-expanded="true"] {
+	border-color: transparent !important;
+	background:
+		linear-gradient(var(--cfs-btn-bg), var(--cfs-btn-bg)) padding-box,
+		linear-gradient(135deg, var(--cfs-stripe-1) 0%, var(--cfs-stripe-2) 50%, var(--cfs-stripe-3) 100%) border-box !important;
+	transform:    translateY(-1px) !important;
+	box-shadow:   0 2px 8px rgba(15, 23, 42, 0.08),
+	              0 8px 26px rgba(99, 102, 241, 0.24) !important;
+}
+
+/* Sparkle mark - static. Gradient fill comes from the inline <linearGradient>. */
+.cfs-btn-sparkle {
+	width:       17px;
+	height:      17px;
+	flex-shrink: 0;
+}
+
+/* Chevron after the label - rotates when the panel is open. */
 .cfs-btn::after {
-	content:     '\25BE'; /* ▾ down-pointing small triangle */
-	font-size:   12px;
+	content:     '\25BE';
+	font-size:   10px;
 	line-height: 1;
 	display:     inline-block;
-	transition:  transform 0.35s ease;
-	margin-left: 2px;
+	transition:  transform 0.35s ease, opacity 0.2s ease;
+	opacity:     0.5;
+	margin-left: -2px;
+}
+
+.cfs-btn:hover::after,
+.cfs-btn[aria-expanded="true"]::after {
+	opacity: 0.85;
 }
 
 .cfs-btn[aria-expanded="true"]::after {
 	transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.cfs-btn,
+	.cfs-btn::after {
+		transition: none !important;
+		transform:  none !important;
+	}
 }
 
 /* ── Accordion panel ───────────────────────────────────────────────────── */
@@ -100,15 +154,6 @@
 
 /* ── Panel card (Google AI Overview-inspired) ──────────────────────────── */
 .cfs-panel-card {
-	/* Themeable CSS custom properties — overridden inline from saved options. */
-	--cfs-bg:       #eef2ff;
-	--cfs-text:     #374151;
-	--cfs-title:    #1e1b4b;
-	--cfs-accent:   #6366f1;
-	--cfs-stripe-1: #6366f1;
-	--cfs-stripe-2: #a855f7;
-	--cfs-stripe-3: #ec4899;
-
 	margin-top:    12px;
 	background:    var(--cfs-bg);
 	border:        1px solid rgba(99, 102, 241, 0.18);
@@ -116,6 +161,8 @@
 	padding:       20px 24px 24px;
 	position:      relative;
 	overflow:      hidden; /* clips the decorative top stripe */
+	box-shadow:    0 2px 8px rgba(15, 23, 42, 0.06),
+	               0 12px 36px rgba(99, 102, 241, 0.14);
 }
 
 /* Decorative gradient stripe at the top of the card */

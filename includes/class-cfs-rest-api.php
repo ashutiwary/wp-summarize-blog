@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class CFS_Rest_API {
 
 	/**
-	 * Constructor — hook into REST API init.
+	 * Constructor - hook into REST API init.
 	 */
 	public function __construct() {
 		add_action( 'rest_api_init', [ $this, 'register_routes' ] );
