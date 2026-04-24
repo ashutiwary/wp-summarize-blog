@@ -58,12 +58,44 @@
     return { panel: panel, body: body, regenBtn: regenBtn };
   }
 
-  function showSpinner(body) {
-    var spinner = document.createElement('div');
-    spinner.className = 'cfs-spinner';
-    spinner.setAttribute('aria-label', 'Loading…');
+  function showSkeleton(body) {
     body.innerHTML = '';
-    body.appendChild(spinner);
+
+    var skeleton = document.createElement('div');
+    skeleton.className = 'cfs-skeleton';
+    skeleton.setAttribute('aria-label', 'Loading summary…');
+    skeleton.setAttribute('aria-busy', 'true');
+
+    var kpLabel = document.createElement('div');
+    kpLabel.className = 'cfs-skeleton-label';
+    skeleton.appendChild(kpLabel);
+
+    var list = document.createElement('ul');
+    list.className = 'cfs-skeleton-list';
+    var widths = ['92%', '78%', '85%'];
+    widths.forEach(function (w) {
+      var li = document.createElement('li');
+      li.className = 'cfs-skeleton-line';
+      li.style.width = w;
+      list.appendChild(li);
+    });
+    skeleton.appendChild(list);
+
+    var concLabel = document.createElement('div');
+    concLabel.className = 'cfs-skeleton-label';
+    skeleton.appendChild(concLabel);
+
+    var block = document.createElement('div');
+    block.className = 'cfs-skeleton-block';
+    for (var i = 0; i < 2; i++) {
+      var row = document.createElement('div');
+      row.className = 'cfs-skeleton-line';
+      row.style.width = i === 1 ? '70%' : '100%';
+      block.appendChild(row);
+    }
+    skeleton.appendChild(block);
+
+    body.appendChild(skeleton);
   }
 
   function renderResult(wrap, body, result) {
@@ -105,7 +137,7 @@
     var body = wrap._cfsBody;
     var regenBtn = wrap._cfsRegenBtn;
 
-    showSpinner(body);
+    showSkeleton(body);
     if (regenBtn) { regenBtn.disabled = true; regenBtn.classList.add('cfs-regen-btn--spinning'); }
 
     fetch(cfsData.restUrl, {
