@@ -317,6 +317,8 @@ JSCODE;
 			<form method="post" action="options.php">
 				<?php settings_fields( 'cfs_settings_group' ); ?>
 
+				<div class="cfs-admin-cards">
+
 				<!-- ── API Configuration ── -->
 				<div class="cfs-admin-card">
 					<div class="cfs-admin-card-head">
@@ -488,6 +490,8 @@ JSCODE;
 
 					</div>
 				</div>
+
+				</div><!-- /.cfs-admin-cards -->
 
 				<div class="cfs-admin-actions">
 					<button type="submit" class="cfs-save-btn"><?php esc_html_e( 'Save Settings', 'cf-summarize' ); ?></button>
