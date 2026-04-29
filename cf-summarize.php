@@ -82,6 +82,13 @@ function cfs_inject_button( string $content ): string {
 		return $content;
 	}
 
+	// Guard against page builders (Avada/Fusion, Elementor, Divi, etc.) that
+	// apply the_content filter multiple times within the same request/loop.
+	static $injected = false;
+	if ( $injected ) {
+		return $content;
+	}
+
 	$post_id = get_the_ID();
 
 	// Resolve enabled state: per-post meta overrides the global default.
@@ -123,6 +130,8 @@ function cfs_inject_button( string $content ): string {
 		$sparkle_svg,
 		$button_label
 	);
+
+	$injected = true;
 
 	if ( 'after' === $position ) {
 		return $content . $button_html;
