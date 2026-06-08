@@ -69,6 +69,8 @@ function cfs_load(): void {
 	new CFS_Settings();
 	new CFS_Rest_API();
 	new CFS_Meta_Box();
+
+	add_shortcode( 'cf-summarize', 'cfs_shortcode' );
 }
 add_action( 'plugins_loaded', 'cfs_load' );
 
@@ -92,6 +94,43 @@ function cfs_is_button_enabled_for_post( int $post_id ): bool {
 }
 
 /**
+ * Build the "Article Overview" button markup for a post.
+ *
+ * Shared by the automatic content injection and the [cf-summarize] shortcode so
+ * both render an identical button bound to the given post.
+ *
+ * @param int    $post_id The post the button summarizes.
+ * @param string $label   Button label; falls back to the configured option.
+ * @return string Button HTML.
+ */
+function cfs_render_button( int $post_id, string $label = '' ): string {
+	$nonce        = wp_create_nonce( 'cfs_summarize_nonce' );
+	$button_label = esc_html( '' !== $label ? $label : get_option( 'cfs_button_label', 'Article Overview' ) );
+
+	// Inline sparkle SVG with a self-contained gradient definition.
+	// Two stars (big + small) compose the "AI twinkle" mark.
+	$sparkle_svg = '<svg class="cfs-btn-sparkle" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">'
+		. '<defs>'
+		. '<linearGradient id="cfs-sparkle-gradient" x1="0" y1="0" x2="1" y2="1">'
+		. '<stop offset="0%" stop-color="#6366f1"/>'
+		. '<stop offset="50%" stop-color="#a855f7"/>'
+		. '<stop offset="100%" stop-color="#ec4899"/>'
+		. '</linearGradient>'
+		. '</defs>'
+		. '<path class="cfs-btn-sparkle-big" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09z" fill="url(#cfs-sparkle-gradient)"/>'
+		. '<path class="cfs-btn-sparkle-small" d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456z" fill="url(#cfs-sparkle-gradient)"/>'
+		. '</svg>';
+
+	return sprintf(
+		'<div class="cfs-wrap" data-post-id="%1$s"><button class="cfs-btn" type="button" data-post-id="%1$s" data-nonce="%2$s">%3$s<span class="cfs-btn-label">%4$s</span></button></div>',
+		esc_attr( (string) $post_id ),
+		esc_attr( $nonce ),
+		$sparkle_svg,
+		$button_label
+	);
+}
+
+/**
  * Inject the "Article Overview" button into singular post content.
  *
  * @param string $content The post content.
@@ -99,6 +138,12 @@ function cfs_is_button_enabled_for_post( int $post_id ): bool {
  */
 function cfs_inject_button( string $content ): string {
 	if ( ! is_singular( 'post' ) || ! in_the_loop() || ! is_main_query() ) {
+		return $content;
+	}
+
+	// The [cf-summarize] shortcode places the button manually; defer to it so
+	// the post doesn't get both an injected and a shortcode button.
+	if ( has_shortcode( $content, 'cf-summarize' ) ) {
 		return $content;
 	}
 
@@ -115,35 +160,10 @@ function cfs_inject_button( string $content ): string {
 		return $content;
 	}
 
-	$nonce        = wp_create_nonce( 'cfs_summarize_nonce' );
-	$button_label = esc_html( get_option( 'cfs_button_label', 'Article Overview' ) );
-	$position     = get_option( 'cfs_button_position', 'before' );
+	$button_html = cfs_render_button( $post_id );
+	$injected    = true;
 
-	// Inline sparkle SVG with a self-contained gradient definition.
-	// Two stars (big + small) compose the "AI twinkle" mark.
-	$sparkle_svg = '<svg class="cfs-btn-sparkle" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">'
-		. '<defs>'
-		. '<linearGradient id="cfs-sparkle-gradient" x1="0" y1="0" x2="1" y2="1">'
-		. '<stop offset="0%" stop-color="#6366f1"/>'
-		. '<stop offset="50%" stop-color="#a855f7"/>'
-		. '<stop offset="100%" stop-color="#ec4899"/>'
-		. '</linearGradient>'
-		. '</defs>'
-		. '<path class="cfs-btn-sparkle-big" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09z" fill="url(#cfs-sparkle-gradient)"/>'
-		. '<path class="cfs-btn-sparkle-small" d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456z" fill="url(#cfs-sparkle-gradient)"/>'
-		. '</svg>';
-
-	$button_html = sprintf(
-		'<div class="cfs-wrap" data-post-id="%1$s"><button class="cfs-btn" type="button" data-post-id="%1$s" data-nonce="%2$s">%3$s<span class="cfs-btn-label">%4$s</span></button></div>',
-		esc_attr( (string) $post_id ),
-		esc_attr( $nonce ),
-		$sparkle_svg,
-		$button_label
-	);
-
-	$injected = true;
-
-	if ( 'after' === $position ) {
+	if ( 'after' === get_option( 'cfs_button_position', 'before' ) ) {
 		return $content . $button_html;
 	}
 
@@ -152,20 +172,46 @@ function cfs_inject_button( string $content ): string {
 add_filter( 'the_content', 'cfs_inject_button', 5 );
 
 /**
- * Enqueue frontend assets only on singular posts.
+ * Render the [cf-summarize] shortcode.
+ *
+ * Placing the shortcode is an explicit opt-in, so it renders the button even on
+ * posts where the global/per-post default is disabled. Limited to singular post
+ * views to match where the button's assets and REST endpoint operate.
+ *
+ * @param array<string,string>|string $atts Shortcode attributes.
+ * @return string Button HTML, or empty string when out of context.
  */
-function cfs_enqueue_assets(): void {
+function cfs_shortcode( $atts ): string {
 	if ( ! is_singular( 'post' ) ) {
+		return '';
+	}
+
+	$post_id = get_the_ID();
+	if ( ! $post_id ) {
+		return '';
+	}
+
+	$atts = shortcode_atts( [ 'label' => '' ], $atts, 'cf-summarize' );
+
+	// Assets are normally enqueued in the head; ensure they load here too in
+	// case the shortcode lives in builder-stored content outside post_content.
+	cfs_enqueue_frontend_assets();
+
+	return cfs_render_button( $post_id, sanitize_text_field( $atts['label'] ) );
+}
+
+/**
+ * Enqueue the frontend script/style and localize its data. Idempotent, so it
+ * can be called from both the enqueue hook and the shortcode.
+ */
+function cfs_enqueue_frontend_assets(): void {
+	static $done = false;
+	if ( $done ) {
 		return;
 	}
+	$done = true;
 
 	$queried_id = get_queried_object_id();
-
-	// Don't load assets on posts where the button is disabled (per-post
-	// override or global default), so they only cost weight where used.
-	if ( ! $queried_id || ! cfs_is_button_enabled_for_post( $queried_id ) ) {
-		return;
-	}
 
 	wp_enqueue_script(
 		'cf-summarize',
@@ -200,6 +246,30 @@ function cfs_enqueue_assets(): void {
 	if ( '' !== $inline ) {
 		wp_add_inline_style( 'cf-summarize', $inline );
 	}
+}
+
+/**
+ * Decide whether to load frontend assets on the current singular post: when the
+ * button is enabled by default, or when the post content uses the shortcode.
+ */
+function cfs_enqueue_assets(): void {
+	if ( ! is_singular( 'post' ) ) {
+		return;
+	}
+
+	$queried_id = get_queried_object_id();
+	if ( ! $queried_id ) {
+		return;
+	}
+
+	$post          = get_post( $queried_id );
+	$has_shortcode = $post && has_shortcode( $post->post_content, 'cf-summarize' );
+
+	if ( ! cfs_is_button_enabled_for_post( $queried_id ) && ! $has_shortcode ) {
+		return;
+	}
+
+	cfs_enqueue_frontend_assets();
 }
 add_action( 'wp_enqueue_scripts', 'cfs_enqueue_assets' );
 

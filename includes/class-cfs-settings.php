@@ -991,6 +991,24 @@ JSCODE;
 							</div>
 						</div>
 
+						<div class="cfs-field-row">
+							<div class="cfs-field-label">
+								<label><?php esc_html_e( 'Custom Placement', 'cf-summarize' ); ?></label>
+								<span class="cfs-hint"><?php esc_html_e( 'Show the button at an exact spot instead of the automatic position.', 'cf-summarize' ); ?></span>
+							</div>
+							<div>
+								<p class="cfs-shortcode-note">
+									<?php
+									printf(
+										/* translators: %s: the [cf-summarize] shortcode */
+										esc_html__( 'Add the %s shortcode inside a post to place the Article Overview button right there. It summarizes the post it sits in and works even when that post is disabled above.', 'cf-summarize' ),
+										'<code>[cf-summarize]</code>'
+									);
+									?>
+								</p>
+							</div>
+						</div>
+
 					</div>
 				</div>
 
