@@ -34,6 +34,7 @@ function cfs_activate(): void {
 		'cfs_button_position'     => 'before',
 		'cfs_enable_all'          => 1,
 		'cfs_cache_enabled'       => 0,
+		'cfs_cache_duration'      => 86400,
 		'cfs_color_bg'            => '#eef2ff',
 		'cfs_color_text'          => '#374151',
 		'cfs_color_title'         => '#1e1b4b',
@@ -72,6 +73,25 @@ function cfs_load(): void {
 add_action( 'plugins_loaded', 'cfs_load' );
 
 /**
+ * Resolve whether the Article Overview button is enabled for a given post.
+ *
+ * Per-post meta overrides the global default:
+ * '' = meta not yet set → inherit global; '1' = explicitly on; '0' = explicitly off.
+ *
+ * @param int $post_id The post ID to check.
+ * @return bool True when the button should be shown for this post.
+ */
+function cfs_is_button_enabled_for_post( int $post_id ): bool {
+	$meta_value = get_post_meta( $post_id, '_cfs_enabled', true );
+
+	if ( '' === $meta_value ) {
+		return (bool) get_option( 'cfs_enable_all', true );
+	}
+
+	return '1' === $meta_value;
+}
+
+/**
  * Inject the "Article Overview" button into singular post content.
  *
  * @param string $content The post content.
@@ -91,17 +111,7 @@ function cfs_inject_button( string $content ): string {
 
 	$post_id = get_the_ID();
 
-	// Resolve enabled state: per-post meta overrides the global default.
-	// '' = meta not yet set → inherit global; '1' = explicitly on; '0' = explicitly off.
-	$meta_value = get_post_meta( $post_id, '_cfs_enabled', true );
-
-	if ( '' === $meta_value ) {
-		$enabled = (bool) get_option( 'cfs_enable_all', true );
-	} else {
-		$enabled = '1' === $meta_value;
-	}
-
-	if ( ! $enabled ) {
+	if ( ! cfs_is_button_enabled_for_post( $post_id ) ) {
 		return $content;
 	}
 
@@ -149,6 +159,14 @@ function cfs_enqueue_assets(): void {
 		return;
 	}
 
+	$queried_id = get_queried_object_id();
+
+	// Don't load assets on posts where the button is disabled (per-post
+	// override or global default), so they only cost weight where used.
+	if ( ! $queried_id || ! cfs_is_button_enabled_for_post( $queried_id ) ) {
+		return;
+	}
+
 	wp_enqueue_script(
 		'cf-summarize',
 		CFS_PLUGIN_URL . 'assets/cf-summarize.js',
@@ -161,8 +179,12 @@ function cfs_enqueue_assets(): void {
 		'cf-summarize',
 		'cfsData',
 		[
-			'restUrl' => rest_url( 'cf-sum/v1/summarize' ),
-			'nonce'   => wp_create_nonce( 'wp_rest' ),
+			'restUrl'    => rest_url( 'cf-sum/v1/summarize' ),
+			'nonce'      => wp_create_nonce( 'wp_rest' ),
+			// Panel heading mirrors the configured button label.
+			'panelTitle' => get_option( 'cfs_button_label', 'Article Overview' ),
+			// Regenerate (force refresh) is an editor-only action.
+			'canRefresh' => $queried_id && current_user_can( 'edit_post', $queried_id ),
 		]
 	);
 
@@ -254,7 +276,29 @@ function cfs_clear_extracted_on_save( int $post_id ): void {
 	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
 		return;
 	}
+	// Revisions carry their own IDs but never hold our meta; skip them so the
+	// real parent post (saved in the same request) is the one that's cleared.
+	if ( wp_is_post_revision( $post_id ) ) {
+		return;
+	}
 	delete_post_meta( $post_id, '_cfs_extracted_content' );
 	delete_post_meta( $post_id, '_cfs_summary' );
 }
 add_action( 'save_post', 'cfs_clear_extracted_on_save' );
+
+/**
+ * Flush every stored summary. Cached summaries are tied to a specific
+ * provider/model, so they must be discarded when those settings change.
+ */
+function cfs_flush_all_summaries(): void {
+	global $wpdb;
+	// phpcs:disable WordPress.DB.DirectDatabaseQuery
+	$wpdb->delete( $wpdb->postmeta, [ 'meta_key' => '_cfs_summary' ] );
+	// phpcs:enable
+}
+
+// Invalidate cached summaries whenever the provider or model is updated.
+foreach ( [ 'cfs_provider', 'cfs_model_openai', 'cfs_model_anthropic' ] as $cfs_watched_option ) {
+	add_action( 'update_option_' . $cfs_watched_option, 'cfs_flush_all_summaries' );
+}
+unset( $cfs_watched_option );

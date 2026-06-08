@@ -34,17 +34,22 @@
 
     var title = document.createElement('span');
     title.className = 'cfs-panel-title';
-    title.textContent = 'Article Overview';
-
-    var regenBtn = document.createElement('button');
-    regenBtn.className = 'cfs-regen-btn';
-    regenBtn.setAttribute('type', 'button');
-    regenBtn.setAttribute('title', 'Regenerate summary');
-    regenBtn.setAttribute('aria-label', 'Regenerate summary');
-    regenBtn.innerHTML = REGEN_SVG;
+    title.textContent = (cfsData && cfsData.panelTitle) || 'Article Overview';
 
     header.appendChild(title);
-    header.appendChild(regenBtn);
+
+    // Regenerate (force refresh) is an editor-only action; the server ignores
+    // force_refresh for visitors who can't edit the post, so only show it then.
+    var regenBtn = null;
+    if (cfsData && cfsData.canRefresh) {
+      regenBtn = document.createElement('button');
+      regenBtn.className = 'cfs-regen-btn';
+      regenBtn.setAttribute('type', 'button');
+      regenBtn.setAttribute('title', 'Regenerate summary');
+      regenBtn.setAttribute('aria-label', 'Regenerate summary');
+      regenBtn.innerHTML = REGEN_SVG;
+      header.appendChild(regenBtn);
+    }
 
     var body = document.createElement('div');
     body.className = 'cfs-panel-body';
@@ -103,6 +108,16 @@
     var conclusion = result.conclusion || '';
     body.innerHTML = '';
 
+    // Fall back to a readable message when the model returned nothing usable,
+    // instead of leaving the panel blank.
+    if (keyPoints.length === 0 && !conclusion) {
+      var emptyMsg = document.createElement('p');
+      emptyMsg.className = 'cfs-conclusion';
+      emptyMsg.textContent = 'No summary is available for this article.';
+      body.appendChild(emptyMsg);
+      return;
+    }
+
     if (keyPoints.length > 0) {
       var kpLabel = document.createElement('p');
       kpLabel.className = 'cfs-section-label';
@@ -134,19 +149,30 @@
   }
 
   function fetchSummary(wrap, postId, nonce, force) {
+    // Guard against duplicate concurrent requests (e.g. rapid open/close/open
+    // before the first request resolves).
+    if (wrap._cfsLoading) { return; }
+    wrap._cfsLoading = true;
+
     var body = wrap._cfsBody;
     var regenBtn = wrap._cfsRegenBtn;
 
     showSkeleton(body);
     if (regenBtn) { regenBtn.disabled = true; regenBtn.classList.add('cfs-regen-btn--spinning'); }
 
+    var headers = { 'Content-Type': 'application/json' };
+    // Only authenticated editors need (and send) the REST nonce — they require
+    // cookie auth for the regenerate action. Sending a stale wp_rest nonce from
+    // a full-page-cached anonymous view would make core reject the request with
+    // a 403 before our handler runs, so visitors send no nonce at all.
+    if (cfsData && cfsData.canRefresh && cfsData.nonce) {
+      headers['X-WP-Nonce'] = cfsData.nonce;
+    }
+
     fetch(cfsData.restUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-WP-Nonce': cfsData.nonce,
-      },
-      body: JSON.stringify({ post_id: parseInt(postId, 10), nonce: nonce, force_refresh: !!force }),
+      headers: headers,
+      body: JSON.stringify({ post_id: parseInt(postId, 10), force_refresh: !!force }),
     })
       .then(function (response) {
         return response.json().then(function (data) {
@@ -154,7 +180,11 @@
         });
       })
       .then(function (result) {
-        wrap._cfsLoaded = true;
+        wrap._cfsLoading = false;
+        // Only mark as loaded on success. A server error (e.g. 429 rate limit
+        // or 500) must stay retryable so reopening the panel refetches instead
+        // of freezing on a stale error until the page is reloaded.
+        wrap._cfsLoaded = result.ok;
         if (regenBtn) { regenBtn.disabled = false; regenBtn.classList.remove('cfs-regen-btn--spinning'); }
 
         if (!result.ok) {
@@ -169,6 +199,7 @@
         renderResult(wrap, body, result.data);
       })
       .catch(function () {
+        wrap._cfsLoading = false;
         wrap._cfsLoaded = false;
         if (regenBtn) { regenBtn.disabled = false; regenBtn.classList.remove('cfs-regen-btn--spinning'); }
         body.innerHTML = '<p class="cfs-error">Network error. Please try again.</p>';
@@ -191,10 +222,12 @@
       var postId = btn.dataset.postId;
       var nonce  = btn.dataset.nonce;
 
-      created.regenBtn.addEventListener('click', function (ev) {
-        ev.stopPropagation();
-        fetchSummary(wrap, postId, nonce, true);
-      });
+      if (created.regenBtn) {
+        created.regenBtn.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          fetchSummary(wrap, postId, nonce, true);
+        });
+      }
     }
 
     var panel = wrap._cfsPanel;
@@ -217,6 +250,20 @@
     document.querySelectorAll('.cfs-btn').forEach(function (btn) {
       btn.setAttribute('aria-expanded', 'false');
       btn.addEventListener('click', handleClick);
+    });
+
+    // Escape closes any open panel and returns focus to its trigger button.
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' && e.key !== 'Esc') { return; }
+      var openPanel = document.querySelector('.cfs-panel.cfs-open');
+      if (!openPanel) { return; }
+      openPanel.classList.remove('cfs-open');
+      var wrap = openPanel.closest('.cfs-wrap');
+      var trigger = wrap ? wrap.querySelector('.cfs-btn') : null;
+      if (trigger) {
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.focus();
+      }
     });
   });
 })();

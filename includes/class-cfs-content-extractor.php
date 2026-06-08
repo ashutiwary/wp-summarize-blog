@@ -19,10 +19,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 class CFS_Content_Extractor {
 
 	/**
+	 * Hard cap on the number of characters sent to the AI.
+	 *
+	 * Roughly ~3,000 tokens. Prevents very long posts from overflowing a
+	 * model's context window or inflating per-request cost. Filterable so
+	 * sites with larger-context models can raise it.
+	 */
+	const MAX_CHARS = 12000;
+
+	/**
 	 * Return clean plain text for a post, using cached post meta when available.
 	 *
 	 * @param WP_Post $post The post to extract content from.
-	 * @return string Cleaned plain text (full article, no character limit).
+	 * @return string Cleaned plain text, truncated to a safe length (see MAX_CHARS).
 	 * @throws Exception If no usable content is found after extraction.
 	 */
 	public static function extract( WP_Post $post ): string {
@@ -54,7 +63,21 @@ class CFS_Content_Extractor {
 			);
 		}
 
-		// 6. Persist so future requests skip re-extraction.
+		// 6. Cap length so long posts don't overflow the model context or
+		//    inflate cost. Cut on a word boundary near the limit when possible.
+		$max_chars = (int) apply_filters( 'cfs_max_input_chars', self::MAX_CHARS );
+		$length    = function_exists( 'mb_strlen' ) ? mb_strlen( $content ) : strlen( $content );
+
+		if ( $max_chars > 0 && $length > $max_chars ) {
+			$truncated  = function_exists( 'mb_substr' ) ? mb_substr( $content, 0, $max_chars ) : substr( $content, 0, $max_chars );
+			$last_space = strrpos( $truncated, ' ' );
+			if ( false !== $last_space && $last_space > ( $max_chars * 0.8 ) ) {
+				$truncated = substr( $truncated, 0, $last_space );
+			}
+			$content = rtrim( $truncated ) . '...';
+		}
+
+		// 7. Persist so future requests skip re-extraction.
 		update_post_meta( $post->ID, $meta_key, $content );
 
 		return $content;

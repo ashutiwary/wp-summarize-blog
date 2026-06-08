@@ -49,11 +49,17 @@ class CFS_AI_Client {
 			);
 		}
 
+		// Guard against the model returning nested arrays/objects for points or
+		// the conclusion. Casting those to string would emit a PHP warning and
+		// yield the literal "Array", so keep only scalar values.
+		$scalar_points = array_filter( $decoded['key_points'], 'is_scalar' );
+		$conclusion    = is_scalar( $decoded['conclusion'] ) ? (string) $decoded['conclusion'] : '';
+
 		return [
 			'key_points' => array_values(
-				array_filter( array_map( 'strval', $decoded['key_points'] ) )
+				array_filter( array_map( 'strval', $scalar_points ) )
 			),
-			'conclusion' => trim( (string) $decoded['conclusion'] ),
+			'conclusion' => trim( $conclusion ),
 		];
 	}
 
@@ -67,10 +73,16 @@ class CFS_AI_Client {
 	public function summarize( string $text ): array {
 		$provider = get_option( 'cfs_provider', 'openai' );
 
-		$raw = match ( $provider ) {
-			'anthropic' => $this->summarize_anthropic( $text ),
-			default     => $this->summarize_openai( $text ),
-		};
+		// Use switch (not match) so the plugin keeps working on PHP 7.4,
+		// which WordPress still supports; match is PHP 8.0+ only.
+		switch ( $provider ) {
+			case 'anthropic':
+				$raw = $this->summarize_anthropic( $text );
+				break;
+			default:
+				$raw = $this->summarize_openai( $text );
+				break;
+		}
 
 		return $this->parse_structured( $raw );
 	}
@@ -101,9 +113,12 @@ class CFS_AI_Client {
 
 		$body = wp_json_encode(
 			[
-				'model'      => $model,
-				'max_tokens' => 500,
-				'messages'   => [
+				'model'           => $model,
+				'max_tokens'      => 1500,
+				// Force strictly-parseable JSON so the prompt's schema is honoured
+				// even if the model would otherwise wrap output in prose/fences.
+				'response_format' => [ 'type' => 'json_object' ],
+				'messages'        => [
 					[
 						'role'    => 'system',
 						'content' => $this->system_prompt(),
@@ -198,7 +213,7 @@ class CFS_AI_Client {
 		$body = wp_json_encode(
 			[
 				'model'      => $model,
-				'max_tokens' => 500,
+				'max_tokens' => 1500,
 				'system'     => $this->system_prompt(),
 				'messages'   => [
 					[

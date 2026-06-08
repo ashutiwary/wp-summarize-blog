@@ -775,6 +775,8 @@ JSCODE;
 			'cfs_section_performance'
 		);
 
+		register_setting( 'cfs_settings_group', 'cfs_cache_duration', [ $this, 'sanitize_cache_duration' ] );
+
 	}
 
 	/**
@@ -1161,6 +1163,17 @@ JSCODE;
 							</div>
 						</div>
 
+						<div class="cfs-field-row">
+							<div class="cfs-field-label">
+								<label for="cfs_cache_duration"><?php esc_html_e( 'Cache Duration', 'cf-summarize' ); ?></label>
+								<span class="cfs-hint"><?php esc_html_e( 'Seconds to keep a summary before regenerating (e.g. 86400 = 24 hours). 0 = never expire.', 'cf-summarize' ); ?></span>
+							</div>
+							<div>
+								<input type="number" min="0" step="1" name="cfs_cache_duration" id="cfs_cache_duration"
+									value="<?php echo esc_attr( (string) get_option( 'cfs_cache_duration', 86400 ) ); ?>" />
+							</div>
+						</div>
+
 					</div>
 				</div>
 
@@ -1426,5 +1439,15 @@ JSCODE;
 	 */
 	public function sanitize_checkbox( $value ): int {
 		return empty( $value ) ? 0 : 1;
+	}
+
+	/**
+	 * Sanitize the cache-duration option (seconds).
+	 *
+	 * @param mixed $value Raw input value.
+	 * @return int Non-negative integer (0 = never expire).
+	 */
+	public function sanitize_cache_duration( $value ): int {
+		return absint( $value );
 	}
 }
