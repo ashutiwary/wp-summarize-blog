@@ -198,7 +198,10 @@ class CFS_Settings {
 	 */
 	function toggleProviderRows( selected ) {
 		document.querySelectorAll( '.cfs-field-row[data-provider-field]' ).forEach( function ( row ) {
-			row.style.display = ( row.dataset.providerField === selected ) ? '' : 'none';
+			// Use an explicit 'grid' (the row's layout) rather than '' to show:
+			// '' only drops the inline style, leaving the pre-JS anti-flicker
+			// stylesheet rule still forcing display:none on the matched rows.
+			row.style.display = ( row.dataset.providerField === selected ) ? 'grid' : 'none';
 		} );
 	}
 
